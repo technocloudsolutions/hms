@@ -1,0 +1,24 @@
+{
+  "title": "Test Blog Post",
+  "slug": "test-blog-post",
+  "content": "This is a test blog post content.",
+  "excerpt": "Test excerpt",
+  "author": "Test Author",
+  "category": "News",
+  "status": "Published",
+  "tags": ["test"],
+  "featuredImage": "https://example.com/test.jpg",
+  "publishDate": "2024-03-19T00:00:00.000Z",
+  "seo": {
+    "title": "Test Blog Post",
+    "description": "Test description",
+    "keywords": ["test"],
+    "focusKeyword": "test",
+    "metaRobotsIndex": "index",
+    "metaRobotsFollow": "follow",
+    "openGraphTitle": "Test Blog Post",
+    "openGraphDescription": "Test description",
+    "twitterTitle": "Test Blog Post",
+    "twitterDescription": "Test description"
+  }
+} 

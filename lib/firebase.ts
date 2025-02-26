@@ -45,10 +45,21 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;
+let app;
+let db;
+let analytics;
+
+try {
+  app = initializeApp(firebaseConfig);
+  db = getFirestore(app);
+  analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;
+  console.log('Firebase initialized successfully');
+} catch (error) {
+  console.error('Error initializing Firebase:', error);
+  throw error;
+}
+
 export const auth = getAuth(app);
-export const db = getFirestore(app);
 export const storage = getStorage(app);
 
 // Image upload helper functions
@@ -941,64 +952,100 @@ export const deleteActivity = async (id: string) => {
 // Blog functions
 export const getBlogPosts = async () => {
   try {
-    const blogRef = collection(db, 'blog');
+    console.log('Getting blog posts from collection: blogPosts');
+    const blogRef = collection(db, 'blogPosts');
+    console.log('Created collection reference');
+    
     const q = query(blogRef, orderBy('createdAt', 'desc'));
+    console.log('Created query');
+    
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as BlogPost[];
+    console.log('Got query snapshot, docs count:', querySnapshot.docs.length);
+    
+    const posts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as BlogPost[];
+    console.log('Mapped posts:', posts);
+    
+    return posts;
   } catch (error: any) {
     console.error('Error getting blog posts:', error);
+    console.error('Error stack:', error.stack);
     return [];
   }
 };
 
 export const getBlogPostById = async (id: string) => {
   try {
-    const blogDoc = await getDoc(doc(db, 'blog', id));
+    console.log('Getting blog post by ID:', id);
+    const blogDoc = await getDoc(doc(db, 'blogPosts', id));
+    console.log('Got document snapshot, exists:', blogDoc.exists());
+    
     if (!blogDoc.exists()) {
       return null;
     }
-    return { id: blogDoc.id, ...blogDoc.data() } as BlogPost;
+    
+    const post = { id: blogDoc.id, ...blogDoc.data() } as BlogPost;
+    console.log('Retrieved post:', post);
+    return post;
   } catch (error: any) {
     console.error('Error getting blog post by ID:', error);
+    console.error('Error stack:', error.stack);
     return null;
   }
 };
 
 export const getBlogPostBySlug = async (slug: string) => {
   try {
-    const blogRef = collection(db, 'blog');
+    console.log('Getting blog post by slug:', slug);
+    const blogRef = collection(db, 'blogPosts');
     const q = query(blogRef, where('slug', '==', slug), limit(1));
+    console.log('Created query');
+    
     const querySnapshot = await getDocs(q);
+    console.log('Got query snapshot, empty:', querySnapshot.empty);
     
     if (querySnapshot.empty) {
       return null;
     }
     
     const doc = querySnapshot.docs[0];
-    return { id: doc.id, ...doc.data() } as BlogPost;
+    const post = { id: doc.id, ...doc.data() } as BlogPost;
+    console.log('Retrieved post:', post);
+    return post;
   } catch (error: any) {
     console.error('Error getting blog post by slug:', error);
+    console.error('Error stack:', error.stack);
     return null;
   }
 };
 
 export const addBlogPost = async (blogData: Omit<BlogPost, 'id'>) => {
   try {
+    console.log('Adding blog post:', blogData);
+    
     // Check if slug already exists
     const existingPost = await getBlogPostBySlug(blogData.slug);
+    console.log('Checked for existing post with same slug:', existingPost);
+    
     if (existingPost) {
       throw new Error('A blog post with this slug already exists');
     }
     
-    const blogRef = collection(db, 'blog');
+    const blogRef = collection(db, 'blogPosts');
+    console.log('Created collection reference');
+    
     const docRef = await addDoc(blogRef, {
       ...blogData,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now()
     });
-    return { id: docRef.id, ...blogData };
+    console.log('Added document with ID:', docRef.id);
+    
+    const result = { id: docRef.id, ...blogData };
+    console.log('Returning result:', result);
+    return result;
   } catch (error: any) {
     console.error('Error adding blog post:', error);
+    console.error('Error stack:', error.stack);
     throw error;
   }
 };
@@ -1013,7 +1060,7 @@ export const updateBlogPost = async (id: string, blogData: Partial<BlogPost>) =>
       }
     }
     
-    const blogRef = doc(db, 'blog', id);
+    const blogRef = doc(db, 'blogPosts', id);
     await updateDoc(blogRef, {
       ...blogData,
       updatedAt: Timestamp.now()
@@ -1027,7 +1074,7 @@ export const updateBlogPost = async (id: string, blogData: Partial<BlogPost>) =>
 
 export const deleteBlogPost = async (id: string) => {
   try {
-    const blogRef = doc(db, 'blog', id);
+    const blogRef = doc(db, 'blogPosts', id);
     await deleteDoc(blogRef);
     return true;
   } catch (error: any) {
