@@ -1,0 +1,12 @@
+.next/
+node_modules/
+public/
+out/
+*.d.ts
+next-env.d.ts
+next.config.js
+next.config.ts
+tailwind.config.ts
+postcss.config.mjs
+eslint.config.mjs
+components.json 
