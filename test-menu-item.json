@@ -1,0 +1,16 @@
+{
+  "name": "Grilled Salmon",
+  "description": "Fresh salmon fillet grilled to perfection with herbs and lemon",
+  "price": 24.99,
+  "category": "Main Course",
+  "mealPeriods": ["Lunch", "Dinner"],
+  "ingredients": ["Salmon", "Olive oil", "Lemon", "Herbs"],
+  "allergens": ["Fish"],
+  "isVegetarian": false,
+  "isVegan": false,
+  "isGlutenFree": true,
+  "preparationTime": 20,
+  "calories": 450,
+  "image": "https://example.com/grilled-salmon.jpg",
+  "isAvailable": true
+} 

@@ -1,0 +1,16 @@
+{
+  "name": "Caesar Salad",
+  "description": "Fresh romaine lettuce with Caesar dressing, croutons, and parmesan cheese",
+  "price": 12.99,
+  "category": "Salads",
+  "mealPeriods": ["Lunch", "Dinner"],
+  "ingredients": ["Romaine lettuce", "Caesar dressing", "Croutons", "Parmesan cheese"],
+  "allergens": ["Dairy", "Gluten"],
+  "isVegetarian": true,
+  "isVegan": false,
+  "isGlutenFree": false,
+  "preparationTime": 10,
+  "calories": 320,
+  "image": "https://example.com/caesar-salad.jpg",
+  "isAvailable": true
+} 

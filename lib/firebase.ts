@@ -32,7 +32,7 @@ import {
   getDownloadURL,
   deleteObject,
 } from "firebase/storage";
-import { User as CustomUser, UserRole, ActivityLog, Notification, ReportData } from "./types";
+import { User as CustomUser, UserRole, ActivityLog, Notification, ReportData, Activity, BlogPost, GalleryImage, MenuItem, Booking, Guest } from "./types";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAh049bHx7iEyt6bIxoo52vQb5v3cqiysw",
@@ -109,28 +109,6 @@ export interface Room {
   price: number;
   status: 'Available' | 'Occupied' | 'Maintenance';
   amenities: string[];
-}
-
-export interface Guest {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  checkIn: Timestamp;
-  checkOut: Timestamp;
-  roomId: string;
-  status: 'Checked In' | 'Checked Out' | 'Reserved';
-}
-
-export interface Booking {
-  id: string;
-  guestId: string;
-  roomId: string;
-  checkIn: Timestamp;
-  checkOut: Timestamp;
-  status: 'Confirmed' | 'Cancelled' | 'Completed';
-  totalAmount: number;
-  paymentStatus: 'Pending' | 'Paid' | 'Refunded';
 }
 
 export interface Service {
@@ -722,100 +700,106 @@ export const getReports = async (limitCount = 10) => {
 };
 
 // Helper functions for statistics calculations
-const calculateBookingsByDay = (bookings, startDate, endDate) => {
+const calculateBookingsByDay = (bookings: Booking[], startDate: Date, endDate: Date) => {
   const days = getDaysArray(startDate, endDate);
   
   return days.map(day => {
     const dayStart = new Date(day);
+    dayStart.setHours(0, 0, 0, 0);
+    
     const dayEnd = new Date(day);
     dayEnd.setHours(23, 59, 59, 999);
     
-    const dayBookings = bookings.filter(booking => {
+    const dayBookings = bookings.filter((booking: Booking) => {
       const checkIn = booking.checkIn.toDate();
       return checkIn >= dayStart && checkIn <= dayEnd;
     });
     
     return {
       date: day,
-      count: dayBookings.length,
+      count: dayBookings.length
     };
   });
 };
 
-const calculateRevenueByDay = (bookings, startDate, endDate) => {
+const calculateRevenueByDay = (bookings: Booking[], startDate: Date, endDate: Date) => {
   const days = getDaysArray(startDate, endDate);
   
   return days.map(day => {
     const dayStart = new Date(day);
+    dayStart.setHours(0, 0, 0, 0);
+    
     const dayEnd = new Date(day);
     dayEnd.setHours(23, 59, 59, 999);
     
-    const dayBookings = bookings.filter(booking => {
+    const dayBookings = bookings.filter((booking: Booking) => {
       const checkIn = booking.checkIn.toDate();
       return checkIn >= dayStart && checkIn <= dayEnd;
     });
     
-    const revenue = dayBookings.reduce((sum, booking) => sum + booking.totalAmount, 0);
+    const revenue = dayBookings.reduce((sum: number, booking: Booking) => sum + booking.totalAmount, 0);
     
     return {
       date: day,
-      revenue,
+      revenue
     };
   });
 };
 
-const calculateOccupancyByDay = (bookings, totalRooms, startDate, endDate) => {
+const calculateOccupancyByDay = (bookings: Booking[], totalRooms: number, startDate: Date, endDate: Date) => {
   const days = getDaysArray(startDate, endDate);
   
   return days.map(day => {
     const dayStart = new Date(day);
+    dayStart.setHours(0, 0, 0, 0);
+    
     const dayEnd = new Date(day);
     dayEnd.setHours(23, 59, 59, 999);
     
-    const occupiedRooms = bookings.filter(booking => {
+    const occupiedRooms = bookings.filter((booking: Booking) => {
       const checkIn = booking.checkIn.toDate();
       const checkOut = booking.checkOut.toDate();
       return (checkIn <= dayEnd && checkOut >= dayStart);
     });
     
-    const uniqueRoomIds = [...new Set(occupiedRooms.map(booking => booking.roomId))];
+    const uniqueRoomIds = [...new Set(occupiedRooms.map((booking: Booking) => booking.roomId))];
     const occupancyRate = (uniqueRoomIds.length / totalRooms) * 100;
     
     return {
       date: day,
-      occupiedRooms: uniqueRoomIds.length,
-      totalRooms,
-      occupancyRate,
+      occupancyRate: Math.round(occupancyRate)
     };
   });
 };
 
-const calculateGuestsByDay = (guests, startDate, endDate) => {
+const calculateGuestsByDay = (guests: Guest[], startDate: Date, endDate: Date) => {
   const days = getDaysArray(startDate, endDate);
   
   return days.map(day => {
     const dayStart = new Date(day);
+    dayStart.setHours(0, 0, 0, 0);
+    
     const dayEnd = new Date(day);
     dayEnd.setHours(23, 59, 59, 999);
     
-    const dayGuests = guests.filter(guest => {
+    const dayGuests = guests.filter((guest: Guest) => {
       const createdAt = guest.createdAt.toDate();
       return createdAt >= dayStart && createdAt <= dayEnd;
     });
     
     return {
       date: day,
-      count: dayGuests.length,
+      count: dayGuests.length
     };
   });
 };
 
-const getDaysArray = (start, end) => {
+const getDaysArray = (start: Date, end: Date) => {
   const arr = [];
   const dt = new Date(start);
   
   while (dt <= end) {
-    arr.push(new Date(dt).toISOString().split('T')[0]);
+    arr.push(new Date(dt));
     dt.setDate(dt.getDate() + 1);
   }
   
@@ -957,7 +941,7 @@ export const deleteActivity = async (id: string) => {
 // Blog functions
 export const getBlogPosts = async () => {
   try {
-    const blogRef = collection(db, 'blogPosts');
+    const blogRef = collection(db, 'blog');
     const q = query(blogRef, orderBy('createdAt', 'desc'));
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as BlogPost[];
@@ -969,7 +953,7 @@ export const getBlogPosts = async () => {
 
 export const getBlogPostById = async (id: string) => {
   try {
-    const blogDoc = await getDoc(doc(db, 'blogPosts', id));
+    const blogDoc = await getDoc(doc(db, 'blog', id));
     if (!blogDoc.exists()) {
       return null;
     }
@@ -982,7 +966,7 @@ export const getBlogPostById = async (id: string) => {
 
 export const getBlogPostBySlug = async (slug: string) => {
   try {
-    const blogRef = collection(db, 'blogPosts');
+    const blogRef = collection(db, 'blog');
     const q = query(blogRef, where('slug', '==', slug), limit(1));
     const querySnapshot = await getDocs(q);
     
@@ -1006,7 +990,7 @@ export const addBlogPost = async (blogData: Omit<BlogPost, 'id'>) => {
       throw new Error('A blog post with this slug already exists');
     }
     
-    const blogRef = collection(db, 'blogPosts');
+    const blogRef = collection(db, 'blog');
     const docRef = await addDoc(blogRef, {
       ...blogData,
       createdAt: Timestamp.now(),
@@ -1029,7 +1013,7 @@ export const updateBlogPost = async (id: string, blogData: Partial<BlogPost>) =>
       }
     }
     
-    const blogRef = doc(db, 'blogPosts', id);
+    const blogRef = doc(db, 'blog', id);
     await updateDoc(blogRef, {
       ...blogData,
       updatedAt: Timestamp.now()
@@ -1043,7 +1027,7 @@ export const updateBlogPost = async (id: string, blogData: Partial<BlogPost>) =>
 
 export const deleteBlogPost = async (id: string) => {
   try {
-    const blogRef = doc(db, 'blogPosts', id);
+    const blogRef = doc(db, 'blog', id);
     await deleteDoc(blogRef);
     return true;
   } catch (error: any) {
@@ -1132,12 +1116,16 @@ export const deleteGalleryImage = async (id: string) => {
 // Restaurant Menu functions
 export const getMenuItems = async () => {
   try {
+    console.log('Firebase: getMenuItems called');
     const menuRef = collection(db, 'menuItems');
-    const q = query(menuRef, orderBy('category'), orderBy('name'));
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as MenuItem[];
+    console.log('Firebase: executing query without orderBy');
+    const querySnapshot = await getDocs(menuRef);
+    console.log('Firebase: query executed, doc count:', querySnapshot.docs.length);
+    const items = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as MenuItem[];
+    console.log('Firebase: returning items:', items);
+    return items;
   } catch (error: any) {
-    console.error('Error getting menu items:', error);
+    console.error('Firebase: Error getting menu items:', error);
     return [];
   }
 };
@@ -1157,27 +1145,37 @@ export const getMenuItemById = async (id: string) => {
 
 export const getMenuItemsByCategory = async (category: string) => {
   try {
+    console.log('Firebase: getMenuItemsByCategory called with category:', category);
     const menuRef = collection(db, 'menuItems');
-    const q = query(menuRef, where('category', '==', category), orderBy('name'));
+    // Use only the where clause without orderBy
+    const q = query(menuRef, where('category', '==', category));
+    console.log('Firebase: executing query with category filter');
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as MenuItem[];
+    console.log('Firebase: query executed, doc count:', querySnapshot.docs.length);
+    const items = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as MenuItem[];
+    console.log('Firebase: returning items:', items);
+    return items;
   } catch (error: any) {
-    console.error('Error getting menu items by category:', error);
+    console.error('Firebase: Error getting menu items by category:', error);
     return [];
   }
 };
 
 export const addMenuItem = async (menuItemData: Omit<MenuItem, 'id'>) => {
   try {
+    console.log('Firebase: addMenuItem called with data:', menuItemData);
     const menuRef = collection(db, 'menuItems');
-    const docRef = await addDoc(menuRef, {
+    const docData = {
       ...menuItemData,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now()
-    });
+    };
+    console.log('Firebase: adding document with data:', docData);
+    const docRef = await addDoc(menuRef, docData);
+    console.log('Firebase: document added with ID:', docRef.id);
     return { id: docRef.id, ...menuItemData };
   } catch (error: any) {
-    console.error('Error adding menu item:', error);
+    console.error('Firebase: Error adding menu item:', error);
     throw error;
   }
 };
@@ -1198,7 +1196,7 @@ export const updateMenuItem = async (id: string, menuItemData: Partial<MenuItem>
 
 export const deleteMenuItem = async (id: string) => {
   try {
-    // Get the menu item to delete its image from storage
+    // Get the menu item to delete its image from storage if it exists
     const menuItemDoc = await getDoc(doc(db, 'menuItems', id));
     if (menuItemDoc.exists()) {
       const menuItemData = menuItemDoc.data() as MenuItem;
@@ -1214,6 +1212,57 @@ export const deleteMenuItem = async (id: string) => {
     return true;
   } catch (error: any) {
     console.error('Error deleting menu item:', error);
+    throw error;
+  }
+};
+
+// Statistics functions
+export const getStatistics = async (startDate: Date, endDate: Date) => {
+  try {
+    // Get all bookings
+    const bookingsRef = collection(db, 'bookings');
+    const bookingsSnapshot = await getDocs(bookingsRef);
+    const bookings = bookingsSnapshot.docs.map(doc => ({ 
+      id: doc.id, 
+      ...doc.data() 
+    })) as Booking[];
+    
+    // Get all guests
+    const guestsRef = collection(db, 'guests');
+    const guestsSnapshot = await getDocs(guestsRef);
+    const guests = guestsSnapshot.docs.map(doc => ({ 
+      id: doc.id, 
+      ...doc.data() 
+    })) as Guest[];
+    
+    // Get total rooms count
+    const roomsRef = collection(db, 'rooms');
+    const roomsSnapshot = await getDocs(roomsRef);
+    const totalRooms = roomsSnapshot.size;
+    
+    // Calculate statistics
+    const bookingsByDay = calculateBookingsByDay(bookings, startDate, endDate);
+    const revenueByDay = calculateRevenueByDay(bookings, startDate, endDate);
+    const occupancyByDay = calculateOccupancyByDay(bookings, totalRooms, startDate, endDate);
+    const guestsByDay = calculateGuestsByDay(guests, startDate, endDate);
+    
+    // Calculate totals
+    const totalBookings = bookings.length;
+    const totalRevenue = bookings.reduce((sum, booking) => sum + booking.totalAmount, 0);
+    const totalGuests = guests.length;
+    
+    return {
+      bookingsByDay,
+      revenueByDay,
+      occupancyByDay,
+      guestsByDay,
+      totalBookings,
+      totalRevenue,
+      totalGuests,
+      totalRooms
+    };
+  } catch (error: any) {
+    console.error('Error getting statistics:', error);
     throw error;
   }
 }; 
