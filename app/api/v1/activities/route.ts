@@ -1,31 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getActivities, getActivityById, addActivity, updateActivity, deleteActivity } from '@/lib/firebase';
 import { Activity } from '@/lib/types';
-
-// TODO: Implement activity-related functions in firebase.ts
-const getActivities = async () => {
-  // Placeholder
-  return [];
-};
-
-const getActivityById = async (id: string) => {
-  // Placeholder
-  return null;
-};
-
-const addActivity = async (activityData: Omit<Activity, 'id'>) => {
-  // Placeholder
-  return { id: 'new-activity-id', ...activityData };
-};
-
-const updateActivity = async (id: string, activityData: Partial<Activity>) => {
-  // Placeholder
-  return { id, ...activityData };
-};
-
-const deleteActivity = async (id: string) => {
-  // Placeholder
-  return true;
-};
 
 export async function GET(request: NextRequest) {
   try {

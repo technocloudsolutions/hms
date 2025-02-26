@@ -820,4 +820,234 @@ const getDaysArray = (start, end) => {
   }
   
   return arr;
+};
+
+// Service functions
+export const getServices = async () => {
+  try {
+    const servicesRef = collection(db, 'services');
+    const q = query(servicesRef, orderBy('name'));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Service[];
+  } catch (error: any) {
+    console.error('Error getting services:', error);
+    return [];
+  }
+};
+
+export const getServiceById = async (id: string) => {
+  try {
+    const serviceDoc = await getDoc(doc(db, 'services', id));
+    if (!serviceDoc.exists()) {
+      return null;
+    }
+    return { id: serviceDoc.id, ...serviceDoc.data() } as Service;
+  } catch (error: any) {
+    console.error('Error getting service by ID:', error);
+    return null;
+  }
+};
+
+export const addService = async (serviceData: Omit<Service, 'id'>) => {
+  try {
+    const servicesRef = collection(db, 'services');
+    const docRef = await addDoc(servicesRef, {
+      ...serviceData,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
+    });
+    return { id: docRef.id, ...serviceData };
+  } catch (error: any) {
+    console.error('Error adding service:', error);
+    throw error;
+  }
+};
+
+export const updateService = async (id: string, serviceData: Partial<Service>) => {
+  try {
+    const serviceRef = doc(db, 'services', id);
+    await updateDoc(serviceRef, {
+      ...serviceData,
+      updatedAt: Timestamp.now()
+    });
+    return { id, ...serviceData };
+  } catch (error: any) {
+    console.error('Error updating service:', error);
+    throw error;
+  }
+};
+
+export const deleteService = async (id: string) => {
+  try {
+    const serviceRef = doc(db, 'services', id);
+    await deleteDoc(serviceRef);
+    return true;
+  } catch (error: any) {
+    console.error('Error deleting service:', error);
+    throw error;
+  }
+};
+
+// Activity functions
+export const getActivities = async () => {
+  try {
+    const activitiesRef = collection(db, 'activities');
+    const q = query(activitiesRef, orderBy('name'));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Activity[];
+  } catch (error: any) {
+    console.error('Error getting activities:', error);
+    return [];
+  }
+};
+
+export const getActivityById = async (id: string) => {
+  try {
+    const activityDoc = await getDoc(doc(db, 'activities', id));
+    if (!activityDoc.exists()) {
+      return null;
+    }
+    return { id: activityDoc.id, ...activityDoc.data() } as Activity;
+  } catch (error: any) {
+    console.error('Error getting activity by ID:', error);
+    return null;
+  }
+};
+
+export const addActivity = async (activityData: Omit<Activity, 'id'>) => {
+  try {
+    const activitiesRef = collection(db, 'activities');
+    const docRef = await addDoc(activitiesRef, {
+      ...activityData,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
+    });
+    return { id: docRef.id, ...activityData };
+  } catch (error: any) {
+    console.error('Error adding activity:', error);
+    throw error;
+  }
+};
+
+export const updateActivity = async (id: string, activityData: Partial<Activity>) => {
+  try {
+    const activityRef = doc(db, 'activities', id);
+    await updateDoc(activityRef, {
+      ...activityData,
+      updatedAt: Timestamp.now()
+    });
+    return { id, ...activityData };
+  } catch (error: any) {
+    console.error('Error updating activity:', error);
+    throw error;
+  }
+};
+
+export const deleteActivity = async (id: string) => {
+  try {
+    const activityRef = doc(db, 'activities', id);
+    await deleteDoc(activityRef);
+    return true;
+  } catch (error: any) {
+    console.error('Error deleting activity:', error);
+    throw error;
+  }
+};
+
+// Blog functions
+export const getBlogPosts = async () => {
+  try {
+    const blogRef = collection(db, 'blogPosts');
+    const q = query(blogRef, orderBy('createdAt', 'desc'));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as BlogPost[];
+  } catch (error: any) {
+    console.error('Error getting blog posts:', error);
+    return [];
+  }
+};
+
+export const getBlogPostById = async (id: string) => {
+  try {
+    const blogDoc = await getDoc(doc(db, 'blogPosts', id));
+    if (!blogDoc.exists()) {
+      return null;
+    }
+    return { id: blogDoc.id, ...blogDoc.data() } as BlogPost;
+  } catch (error: any) {
+    console.error('Error getting blog post by ID:', error);
+    return null;
+  }
+};
+
+export const getBlogPostBySlug = async (slug: string) => {
+  try {
+    const blogRef = collection(db, 'blogPosts');
+    const q = query(blogRef, where('slug', '==', slug), limit(1));
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+      return null;
+    }
+    
+    const doc = querySnapshot.docs[0];
+    return { id: doc.id, ...doc.data() } as BlogPost;
+  } catch (error: any) {
+    console.error('Error getting blog post by slug:', error);
+    return null;
+  }
+};
+
+export const addBlogPost = async (blogData: Omit<BlogPost, 'id'>) => {
+  try {
+    // Check if slug already exists
+    const existingPost = await getBlogPostBySlug(blogData.slug);
+    if (existingPost) {
+      throw new Error('A blog post with this slug already exists');
+    }
+    
+    const blogRef = collection(db, 'blogPosts');
+    const docRef = await addDoc(blogRef, {
+      ...blogData,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
+    });
+    return { id: docRef.id, ...blogData };
+  } catch (error: any) {
+    console.error('Error adding blog post:', error);
+    throw error;
+  }
+};
+
+export const updateBlogPost = async (id: string, blogData: Partial<BlogPost>) => {
+  try {
+    // If slug is being updated, check if it already exists
+    if (blogData.slug) {
+      const existingPost = await getBlogPostBySlug(blogData.slug);
+      if (existingPost && existingPost.id !== id) {
+        throw new Error('A blog post with this slug already exists');
+      }
+    }
+    
+    const blogRef = doc(db, 'blogPosts', id);
+    await updateDoc(blogRef, {
+      ...blogData,
+      updatedAt: Timestamp.now()
+    });
+    return { id, ...blogData };
+  } catch (error: any) {
+    console.error('Error updating blog post:', error);
+    throw error;
+  }
+};
+
+export const deleteBlogPost = async (id: string) => {
+  try {
+    const blogRef = doc(db, 'blogPosts', id);
+    await deleteDoc(blogRef);
+    return true;
+  } catch (error: any) {
+    console.error('Error deleting blog post:', error);
+    throw error;
+  }
 }; 

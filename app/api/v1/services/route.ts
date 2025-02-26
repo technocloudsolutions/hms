@@ -1,26 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServices, getServiceById, addService, updateService, deleteService } from '@/lib/firebase';
 import { Service } from '@/lib/types';
-
-// TODO: Implement service-related functions in firebase.ts
-const getServices = async () => {
-  // Placeholder
-  return [];
-};
-
-const addService = async (serviceData: Omit<Service, 'id'>) => {
-  // Placeholder
-  return { id: 'new-service-id', ...serviceData };
-};
-
-const updateService = async (id: string, serviceData: Partial<Service>) => {
-  // Placeholder
-  return { id, ...serviceData };
-};
-
-const deleteService = async (id: string) => {
-  // Placeholder
-  return true;
-};
 
 export async function GET(request: NextRequest) {
   try {
@@ -28,8 +8,11 @@ export async function GET(request: NextRequest) {
     const id = searchParams.get('id');
     
     if (id) {
-      // TODO: Implement getService by ID
-      return NextResponse.json({ message: 'Not implemented yet' }, { status: 501 });
+      const service = await getServiceById(id);
+      if (!service) {
+        return NextResponse.json({ error: 'Service not found' }, { status: 404 });
+      }
+      return NextResponse.json(service);
     }
     
     const services = await getServices();

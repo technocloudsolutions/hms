@@ -1,36 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getBlogPosts, getBlogPostById, getBlogPostBySlug, addBlogPost, updateBlogPost, deleteBlogPost } from '@/lib/firebase';
 import { BlogPost } from '@/lib/types';
-
-// TODO: Implement blog-related functions in firebase.ts
-const getBlogPosts = async () => {
-  // Placeholder
-  return [];
-};
-
-const getBlogPostById = async (id: string) => {
-  // Placeholder
-  return null;
-};
-
-const getBlogPostBySlug = async (slug: string) => {
-  // Placeholder
-  return null;
-};
-
-const addBlogPost = async (blogData: Omit<BlogPost, 'id'>) => {
-  // Placeholder
-  return { id: 'new-blog-id', ...blogData };
-};
-
-const updateBlogPost = async (id: string, blogData: Partial<BlogPost>) => {
-  // Placeholder
-  return { id, ...blogData };
-};
-
-const deleteBlogPost = async (id: string) => {
-  // Placeholder
-  return true;
-};
 
 export async function GET(request: NextRequest) {
   try {
