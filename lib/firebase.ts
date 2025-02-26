@@ -1050,4 +1050,170 @@ export const deleteBlogPost = async (id: string) => {
     console.error('Error deleting blog post:', error);
     throw error;
   }
+};
+
+// Gallery functions
+export const getGalleryImages = async () => {
+  try {
+    const galleryRef = collection(db, 'gallery');
+    const q = query(galleryRef, orderBy('createdAt', 'desc'));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as GalleryImage[];
+  } catch (error: any) {
+    console.error('Error getting gallery images:', error);
+    return [];
+  }
+};
+
+export const getGalleryImageById = async (id: string) => {
+  try {
+    const imageDoc = await getDoc(doc(db, 'gallery', id));
+    if (!imageDoc.exists()) {
+      return null;
+    }
+    return { id: imageDoc.id, ...imageDoc.data() } as GalleryImage;
+  } catch (error: any) {
+    console.error('Error getting gallery image by ID:', error);
+    return null;
+  }
+};
+
+export const addGalleryImage = async (imageData: Omit<GalleryImage, 'id'>) => {
+  try {
+    const galleryRef = collection(db, 'gallery');
+    const docRef = await addDoc(galleryRef, {
+      ...imageData,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
+    });
+    return { id: docRef.id, ...imageData };
+  } catch (error: any) {
+    console.error('Error adding gallery image:', error);
+    throw error;
+  }
+};
+
+export const updateGalleryImage = async (id: string, imageData: Partial<GalleryImage>) => {
+  try {
+    const imageRef = doc(db, 'gallery', id);
+    await updateDoc(imageRef, {
+      ...imageData,
+      updatedAt: Timestamp.now()
+    });
+    return { id, ...imageData };
+  } catch (error: any) {
+    console.error('Error updating gallery image:', error);
+    throw error;
+  }
+};
+
+export const deleteGalleryImage = async (id: string) => {
+  try {
+    // Get the image to delete its URL from storage
+    const imageDoc = await getDoc(doc(db, 'gallery', id));
+    if (imageDoc.exists()) {
+      const imageData = imageDoc.data() as GalleryImage;
+      if (imageData.url) {
+        // Delete the image from storage
+        await deleteImage(imageData.url);
+      }
+    }
+    
+    // Delete the document from Firestore
+    const imageRef = doc(db, 'gallery', id);
+    await deleteDoc(imageRef);
+    return true;
+  } catch (error: any) {
+    console.error('Error deleting gallery image:', error);
+    throw error;
+  }
+};
+
+// Restaurant Menu functions
+export const getMenuItems = async () => {
+  try {
+    const menuRef = collection(db, 'menuItems');
+    const q = query(menuRef, orderBy('category'), orderBy('name'));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as MenuItem[];
+  } catch (error: any) {
+    console.error('Error getting menu items:', error);
+    return [];
+  }
+};
+
+export const getMenuItemById = async (id: string) => {
+  try {
+    const menuItemDoc = await getDoc(doc(db, 'menuItems', id));
+    if (!menuItemDoc.exists()) {
+      return null;
+    }
+    return { id: menuItemDoc.id, ...menuItemDoc.data() } as MenuItem;
+  } catch (error: any) {
+    console.error('Error getting menu item by ID:', error);
+    return null;
+  }
+};
+
+export const getMenuItemsByCategory = async (category: string) => {
+  try {
+    const menuRef = collection(db, 'menuItems');
+    const q = query(menuRef, where('category', '==', category), orderBy('name'));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as MenuItem[];
+  } catch (error: any) {
+    console.error('Error getting menu items by category:', error);
+    return [];
+  }
+};
+
+export const addMenuItem = async (menuItemData: Omit<MenuItem, 'id'>) => {
+  try {
+    const menuRef = collection(db, 'menuItems');
+    const docRef = await addDoc(menuRef, {
+      ...menuItemData,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
+    });
+    return { id: docRef.id, ...menuItemData };
+  } catch (error: any) {
+    console.error('Error adding menu item:', error);
+    throw error;
+  }
+};
+
+export const updateMenuItem = async (id: string, menuItemData: Partial<MenuItem>) => {
+  try {
+    const menuItemRef = doc(db, 'menuItems', id);
+    await updateDoc(menuItemRef, {
+      ...menuItemData,
+      updatedAt: Timestamp.now()
+    });
+    return { id, ...menuItemData };
+  } catch (error: any) {
+    console.error('Error updating menu item:', error);
+    throw error;
+  }
+};
+
+export const deleteMenuItem = async (id: string) => {
+  try {
+    // Get the menu item to delete its image from storage
+    const menuItemDoc = await getDoc(doc(db, 'menuItems', id));
+    if (menuItemDoc.exists()) {
+      const menuItemData = menuItemDoc.data() as MenuItem;
+      if (menuItemData.image) {
+        // Delete the image from storage
+        await deleteImage(menuItemData.image);
+      }
+    }
+    
+    // Delete the document from Firestore
+    const menuItemRef = doc(db, 'menuItems', id);
+    await deleteDoc(menuItemRef);
+    return true;
+  } catch (error: any) {
+    console.error('Error deleting menu item:', error);
+    throw error;
+  }
 }; 

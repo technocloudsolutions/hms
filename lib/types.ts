@@ -273,4 +273,37 @@ export interface ReportData {
   createdBy: string;
   createdAt: Timestamp;
   format?: 'pdf' | 'csv' | 'excel';
+}
+
+export interface GalleryImage {
+  id: string;
+  url: string;
+  title: string;
+  description: string;
+  category: string;
+  tags?: string[];
+  isFeatured?: boolean;
+  displayOrder?: number;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+export interface MenuItem {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  category: string;
+  mealPeriods: string[];
+  ingredients: string[];
+  allergens: string[];
+  isVegetarian: boolean;
+  isVegan: boolean;
+  isGlutenFree: boolean;
+  preparationTime: number;
+  calories: number;
+  image: string;
+  isAvailable: boolean;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 } 
