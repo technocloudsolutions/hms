@@ -23,7 +23,8 @@ import {
   Timestamp,
   DocumentData,
   writeBatch,
-  getDoc
+  getDoc,
+  Firestore
 } from "firebase/firestore";
 import {
   getStorage,
@@ -46,7 +47,7 @@ const firebaseConfig = {
 
 // Initialize Firebase
 let app;
-let db;
+let db: Firestore;
 let analytics;
 
 try {
@@ -61,6 +62,7 @@ try {
 
 export const auth = getAuth(app);
 export const storage = getStorage(app);
+export { db }; // Export the Firestore database instance
 
 // Image upload helper functions
 export const uploadImage = async (file: File, path: string): Promise<string> => {
