@@ -306,4 +306,35 @@ export interface MenuItem {
   isAvailable: boolean;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+}
+
+export interface Invoice {
+  id: string;
+  bookingId: string;
+  guestId: string;
+  invoiceNumber: string;
+  issueDate: Timestamp;
+  dueDate: Timestamp;
+  items: InvoiceItem[];
+  subtotal: number;
+  taxRate: number;
+  taxAmount: number;
+  discountAmount: number;
+  totalAmount: number;
+  currency: 'USD' | 'LKR';
+  exchangeRate?: number; // For LKR conversion
+  notes?: string;
+  status: 'Draft' | 'Issued' | 'Paid' | 'Overdue' | 'Cancelled';
+  paymentMethod?: 'Credit Card' | 'Cash' | 'Bank Transfer' | 'PayPal';
+  paymentDate?: Timestamp;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+export interface InvoiceItem {
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  amount: number;
+  type: 'Room' | 'Service' | 'Activity' | 'Food' | 'Other';
 } 

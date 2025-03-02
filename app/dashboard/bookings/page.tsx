@@ -14,6 +14,7 @@ import { ColumnDef } from '@tanstack/react-table';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import InvoiceButton from '@/components/bookings/InvoiceButton';
 
 // Loading component for Suspense
 function BookingsLoading() {
@@ -201,6 +202,9 @@ function BookingsContent() {
       id: 'actions',
       cell: ({ row }) => {
         const booking = row.original as Booking;
+        const guest = guests.find(g => g.id === booking.guestId);
+        const room = rooms.find(r => r.id === booking.roomId);
+        
         return (
           <div className="flex gap-2">
             <Button
@@ -213,6 +217,13 @@ function BookingsContent() {
             >
               Edit
             </Button>
+            {guest && room && (
+              <InvoiceButton 
+                booking={booking} 
+                guest={guest} 
+                room={room} 
+              />
+            )}
             <Button
               variant="destructive"
               size="sm"

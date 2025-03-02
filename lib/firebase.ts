@@ -33,7 +33,7 @@ import {
   getDownloadURL,
   deleteObject,
 } from "firebase/storage";
-import { User as CustomUser, UserRole, ActivityLog, Notification, ReportData, Activity, BlogPost, GalleryImage, MenuItem, Booking, Guest } from "./types";
+import { User as CustomUser, UserRole, ActivityLog, Notification, ReportData, Activity, BlogPost, GalleryImage, MenuItem, Booking, Guest, Invoice } from "./types";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAh049bHx7iEyt6bIxoo52vQb5v3cqiysw",
@@ -1313,5 +1313,177 @@ export const getStatistics = async (startDate: Date, endDate: Date) => {
   } catch (error: any) {
     console.error('Error getting statistics:', error);
     throw error;
+  }
+};
+
+// Invoice functions
+export const getInvoices = async () => {
+  try {
+    const invoicesRef = collection(db, 'invoices');
+    const q = query(invoicesRef, orderBy('createdAt', 'desc'));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Invoice[];
+  } catch (error: any) {
+    console.error('Error getting invoices:', error);
+    return [];
+  }
+};
+
+export const getInvoiceById = async (id: string) => {
+  try {
+    const invoiceDoc = await getDoc(doc(db, 'invoices', id));
+    if (!invoiceDoc.exists()) {
+      return null;
+    }
+    return { id: invoiceDoc.id, ...invoiceDoc.data() } as Invoice;
+  } catch (error: any) {
+    console.error('Error getting invoice by ID:', error);
+    return null;
+  }
+};
+
+export const getInvoicesByBookingId = async (bookingId: string) => {
+  try {
+    const invoicesRef = collection(db, 'invoices');
+    const q = query(invoicesRef, where('bookingId', '==', bookingId));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Invoice[];
+  } catch (error: any) {
+    console.error('Error getting invoices by booking ID:', error);
+    return [];
+  }
+};
+
+export const generateInvoiceNumber = async () => {
+  try {
+    // Get the current year and month
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2);
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    
+    // Get the latest invoice to determine the next sequence number
+    const invoicesRef = collection(db, 'invoices');
+    const q = query(invoicesRef, orderBy('createdAt', 'desc'), limit(1));
+    const querySnapshot = await getDocs(q);
+    
+    let sequenceNumber = 1;
+    if (!querySnapshot.empty) {
+      const latestInvoice = querySnapshot.docs[0].data() as Invoice;
+      const latestInvoiceNumber = latestInvoice.invoiceNumber;
+      
+      // Extract the sequence number from the latest invoice number (format: INV-YY-MM-XXXX)
+      const latestSequence = parseInt(latestInvoiceNumber.split('-')[3], 10);
+      sequenceNumber = latestSequence + 1;
+    }
+    
+    // Format: INV-YY-MM-XXXX (e.g., INV-23-05-0001)
+    return `INV-${year}-${month}-${sequenceNumber.toString().padStart(4, '0')}`;
+  } catch (error: any) {
+    console.error('Error generating invoice number:', error);
+    // Fallback to a timestamp-based invoice number
+    return `INV-${Date.now()}`;
+  }
+};
+
+export const createInvoice = async (invoiceData: Omit<Invoice, 'id' | 'invoiceNumber' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    const now = Timestamp.now();
+    const invoiceNumber = await generateInvoiceNumber();
+    
+    const invoicesRef = collection(db, 'invoices');
+    const docRef = await addDoc(invoicesRef, {
+      ...invoiceData,
+      invoiceNumber,
+      createdAt: now,
+      updatedAt: now
+    });
+    
+    return { id: docRef.id, invoiceNumber, error: null };
+  } catch (error: any) {
+    return { id: null, invoiceNumber: null, error: error.message };
+  }
+};
+
+export const updateInvoice = async (id: string, invoiceData: Partial<Invoice>) => {
+  try {
+    const invoiceRef = doc(db, 'invoices', id);
+    await updateDoc(invoiceRef, {
+      ...invoiceData,
+      updatedAt: Timestamp.now()
+    });
+    return { error: null };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+};
+
+export const deleteInvoice = async (id: string) => {
+  try {
+    const invoiceRef = doc(db, 'invoices', id);
+    await deleteDoc(invoiceRef);
+    return { error: null };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+};
+
+// Function to get current exchange rate (in a real app, this would call an external API)
+export const getExchangeRate = async (from: string, to: string): Promise<number> => {
+  try {
+    // In a real application, you would call an external API here
+    // For now, we'll use a hardcoded rate for USD to LKR
+    if (from === 'USD' && to === 'LKR') {
+      return 320.5; // Example rate: 1 USD = 320.5 LKR
+    } else if (from === 'LKR' && to === 'USD') {
+      return 1 / 320.5;
+    }
+    return 1; // Default to 1 if same currency or unsupported pair
+  } catch (error) {
+    console.error('Error fetching exchange rate:', error);
+    return 1; // Default fallback
+  }
+};
+
+// Add this function near the other settings-related functions
+export const getAmenities = async (): Promise<string[]> => {
+  try {
+    const amenitiesSettingsRef = doc(db, 'settings', 'amenities');
+    const amenitiesSettingsDoc = await getDoc(amenitiesSettingsRef);
+    
+    if (!amenitiesSettingsDoc.exists()) {
+      // Return default amenities if settings don't exist
+      return [
+        'Wi-Fi',
+        'TV',
+        'Air Conditioning',
+        'Mini Bar',
+        'Safe',
+        'Room Service',
+        'Coffee Maker',
+        'Hair Dryer',
+        'Iron',
+        'Work Desk',
+        'Bathtub',
+        'Shower',
+        'Balcony',
+        'City View',
+        'Pool Access',
+        'Gym Access',
+        'Spa Access',
+        'Lounge Access',
+      ];
+    }
+    
+    return amenitiesSettingsDoc.data().items || [];
+  } catch (error) {
+    console.error('Error fetching amenities:', error);
+    // Return default amenities in case of error
+    return [
+      'Wi-Fi',
+      'TV',
+      'Air Conditioning',
+      'Mini Bar',
+      'Safe',
+    ];
   }
 }; 

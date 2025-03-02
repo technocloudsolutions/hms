@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,7 @@ import { Room } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Timestamp } from 'firebase/firestore';
 import { Upload } from '@/components/ui/upload';
-import { uploadImages } from '@/lib/firebase';
+import { uploadImages, getAmenities } from '@/lib/firebase';
 import { Loader2 } from 'lucide-react';
 
 interface RoomDialogProps {
@@ -27,26 +27,6 @@ const ROOM_TYPES = ['Single', 'Double', 'Suite', 'Deluxe', 'Presidential'] as co
 const ROOM_STATUS = ['Available', 'Occupied', 'Maintenance', 'Reserved', 'Cleaning'] as const;
 const ROOM_VIEWS = ['City', 'Ocean', 'Garden', 'Mountain', 'Pool'] as const;
 const BED_TYPES = ['Single', 'Double', 'Queen', 'King'] as const;
-const DEFAULT_AMENITIES = [
-  'Wi-Fi',
-  'TV',
-  'Air Conditioning',
-  'Mini Bar',
-  'Safe',
-  'Room Service',
-  'Coffee Maker',
-  'Hair Dryer',
-  'Iron',
-  'Work Desk',
-  'Bathtub',
-  'Shower',
-  'Balcony',
-  'City View',
-  'Pool Access',
-  'Gym Access',
-  'Spa Access',
-  'Lounge Access',
-] as const;
 
 export function RoomDialog({ 
   open, 
@@ -79,6 +59,25 @@ export function RoomDialog({
   });
 
   const [isUploading, setIsUploading] = React.useState(false);
+  const [availableAmenities, setAvailableAmenities] = React.useState<string[]>([]);
+  const [isLoadingAmenities, setIsLoadingAmenities] = React.useState(true);
+
+  // Fetch amenities from settings when component mounts
+  useEffect(() => {
+    const fetchAmenities = async () => {
+      try {
+        setIsLoadingAmenities(true);
+        const amenities = await getAmenities();
+        setAvailableAmenities(amenities);
+      } catch (error) {
+        console.error('Error fetching amenities:', error);
+      } finally {
+        setIsLoadingAmenities(false);
+      }
+    };
+
+    fetchAmenities();
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -305,29 +304,31 @@ export function RoomDialog({
             <Upload
               value={formData.images}
               onChange={handleImageUpload}
-              className="h-32"
             />
           </div>
 
           {/* Amenities */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Amenities</h3>
-            <div className="grid grid-cols-3 gap-2">
-              {DEFAULT_AMENITIES.map((amenity) => (
-                <label
-                  key={amenity}
-                  className="flex items-center space-x-2 text-sm"
-                >
-                  <input
-                    type="checkbox"
-                    checked={formData.amenities?.includes(amenity)}
-                    onChange={() => handleAmenityToggle(amenity)}
-                    className="rounded border-gray-300 text-primary focus:ring-primary"
-                  />
-                  <span>{amenity}</span>
-                </label>
-              ))}
-            </div>
+            {isLoadingAmenities ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                <span className="ml-2">Loading amenities...</span>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {availableAmenities.map((amenity) => (
+                  <div key={amenity} className="flex items-center space-x-2">
+                    <Switch
+                      id={`amenity-${amenity}`}
+                      checked={formData.amenities?.includes(amenity) || false}
+                      onCheckedChange={() => handleAmenityToggle(amenity)}
+                    />
+                    <Label htmlFor={`amenity-${amenity}`}>{amenity}</Label>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Additional Features */}
@@ -354,17 +355,9 @@ export function RoomDialog({
           </div>
 
           <DialogFooter>
-            <Button type="submit" className="w-full" disabled={isUploading}>
-              {isUploading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Uploading...
-                </>
-              ) : mode === 'create' ? (
-                'Add Room'
-              ) : (
-                'Save Changes'
-              )}
+            <Button type="submit" disabled={isUploading}>
+              {isUploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {mode === 'create' ? 'Create Room' : 'Update Room'}
             </Button>
           </DialogFooter>
         </form>

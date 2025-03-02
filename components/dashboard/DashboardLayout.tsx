@@ -18,6 +18,7 @@ import {
   FileText,
   BarChart,
   UserCog,
+  Receipt,
 } from 'lucide-react';
 import { logOut, getNotifications, markNotificationAsRead, markAllNotificationsAsRead } from '@/lib/firebase';
 import { Notification } from '@/lib/types';
@@ -142,6 +143,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { icon: Building2, label: 'Rooms', href: '/dashboard/rooms' },
     { icon: Users2, label: 'Guests', href: '/dashboard/guests' },
     { icon: CalendarDays, label: 'Bookings', href: '/dashboard/bookings' },
+    { icon: Receipt, label: 'Invoices', href: '/dashboard/invoices' },
     { icon: ChefHat, label: 'Services', href: '/dashboard/services' },
     { icon: UtensilsCrossed, label: 'Restaurant Menu', href: '/dashboard/restaurant/menu' },
     { icon: Compass, label: 'Activities', href: '/dashboard/activities' },

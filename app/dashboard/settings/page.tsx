@@ -57,6 +57,12 @@ interface AppSettings {
   darkMode: boolean;
 }
 
+interface AmenitiesSettings {
+  items: string[];
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
+}
+
 interface MealPeriod {
   name: string;
   startTime: string;
@@ -126,6 +132,31 @@ export default function SettingsPage() {
     cuisine: ['International'],
     dressCode: 'Smart Casual',
   });
+
+  const [amenitiesSettings, setAmenitiesSettings] = React.useState<AmenitiesSettings>({
+    items: [
+      'Wi-Fi',
+      'TV',
+      'Air Conditioning',
+      'Mini Bar',
+      'Safe',
+      'Room Service',
+      'Coffee Maker',
+      'Hair Dryer',
+      'Iron',
+      'Work Desk',
+      'Bathtub',
+      'Shower',
+      'Balcony',
+      'City View',
+      'Pool Access',
+      'Gym Access',
+      'Spa Access',
+      'Lounge Access',
+    ],
+  });
+
+  const [newAmenity, setNewAmenity] = React.useState('');
 
   // Initialize user profile when component mounts
   React.useEffect(() => {
@@ -214,6 +245,42 @@ export default function SettingsPage() {
           setRestaurantSettings(initialRestaurantSettings);
         } else {
           setRestaurantSettings(restaurantSettingsDoc.data() as RestaurantSettings);
+        }
+
+        // Fetch amenities settings
+        const amenitiesSettingsRef = doc(db, 'settings', 'amenities');
+        const amenitiesSettingsDoc = await getDoc(amenitiesSettingsRef);
+
+        if (!amenitiesSettingsDoc.exists()) {
+          // Create initial amenities settings if they don't exist
+          const initialAmenitiesSettings = {
+            items: [
+              'Wi-Fi',
+              'TV',
+              'Air Conditioning',
+              'Mini Bar',
+              'Safe',
+              'Room Service',
+              'Coffee Maker',
+              'Hair Dryer',
+              'Iron',
+              'Work Desk',
+              'Bathtub',
+              'Shower',
+              'Balcony',
+              'City View',
+              'Pool Access',
+              'Gym Access',
+              'Spa Access',
+              'Lounge Access',
+            ],
+            createdAt: Timestamp.now(),
+            updatedAt: Timestamp.now(),
+          };
+          await setDoc(amenitiesSettingsRef, initialAmenitiesSettings);
+          setAmenitiesSettings(initialAmenitiesSettings);
+        } else {
+          setAmenitiesSettings(amenitiesSettingsDoc.data() as AmenitiesSettings);
         }
 
         setLoading(false);
@@ -428,6 +495,58 @@ export default function SettingsPage() {
     }
   };
 
+  const handleAmenitiesSettingsSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    try {
+      const settingsRef = doc(db, 'settings', 'amenities');
+      await setDoc(settingsRef, {
+        ...amenitiesSettings,
+        updatedAt: Timestamp.now(),
+      }, { merge: true });
+
+      toast({
+        title: 'Success',
+        description: 'Amenities settings updated successfully',
+      });
+    } catch (error) {
+      console.error('Error updating amenities settings:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update amenities settings',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleAddAmenity = () => {
+    if (!newAmenity.trim()) return;
+    
+    // Check if amenity already exists
+    if (amenitiesSettings.items.includes(newAmenity.trim())) {
+      toast({
+        title: 'Error',
+        description: 'This amenity already exists',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    setAmenitiesSettings(prev => ({
+      ...prev,
+      items: [...prev.items, newAmenity.trim()]
+    }));
+    setNewAmenity('');
+  };
+
+  const handleRemoveAmenity = (amenity: string) => {
+    setAmenitiesSettings(prev => ({
+      ...prev,
+      items: prev.items.filter(item => item !== amenity)
+    }));
+  };
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -451,6 +570,7 @@ export default function SettingsPage() {
             <TabsTrigger value="profile">Profile</TabsTrigger>
             <TabsTrigger value="hotel">Hotel</TabsTrigger>
             <TabsTrigger value="restaurant">Restaurant</TabsTrigger>
+            <TabsTrigger value="amenities">Amenities</TabsTrigger>
             <TabsTrigger value="app">App Settings</TabsTrigger>
           </TabsList>
 
@@ -720,6 +840,72 @@ export default function SettingsPage() {
                     </Select>
                   </div>
                   <Button type="submit">Save Restaurant Settings</Button>
+                </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="amenities">
+            <Card>
+              <CardHeader>
+                <CardTitle>Amenities Settings</CardTitle>
+                <CardDescription>
+                  Manage the list of amenities available for rooms.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleAmenitiesSettingsSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="newAmenity">Add New Amenity</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="newAmenity"
+                        value={newAmenity}
+                        onChange={(e) => setNewAmenity(e.target.value)}
+                        placeholder="Enter amenity name"
+                      />
+                      <Button type="button" onClick={handleAddAmenity}>Add</Button>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Current Amenities</Label>
+                    <div className="border rounded-md p-4">
+                      <div className="flex flex-wrap gap-2">
+                        {amenitiesSettings.items.map((amenity) => (
+                          <div key={amenity} className="flex items-center bg-muted rounded-full px-3 py-1">
+                            <span className="mr-2">{amenity}</span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-5 w-5 rounded-full"
+                              onClick={() => handleRemoveAmenity(amenity)}
+                            >
+                              <span className="sr-only">Remove</span>
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="h-3 w-3"
+                              >
+                                <path d="M18 6 6 18" />
+                                <path d="m6 6 12 12" />
+                              </svg>
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <Button type="submit">Save Amenities Settings</Button>
                 </form>
               </CardContent>
             </Card>
