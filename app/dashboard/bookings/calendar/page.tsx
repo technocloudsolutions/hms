@@ -44,6 +44,31 @@ const getMonthName = (month: number) => {
   return months[month];
 };
 
+// Helper function to get date object from various formats
+const getDateFromTimestamp = (timestamp: any): Date | null => {
+  try {
+    // Handle Firebase Timestamp objects
+    if (timestamp && typeof timestamp.toDate === 'function') {
+      return timestamp.toDate();
+    }
+    
+    // Handle Date objects
+    if (timestamp instanceof Date) {
+      return timestamp;
+    }
+    
+    // Handle string or number timestamps
+    if (typeof timestamp === 'string' || typeof timestamp === 'number') {
+      return new Date(timestamp);
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error converting timestamp to date:', error);
+    return null;
+  }
+};
+
 export default function BookingsCalendarPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -71,17 +96,19 @@ export default function BookingsCalendarPage() {
   const [bookingsSnapshot] = useCollection(collection(db, 'bookings'));
   const [guestsSnapshot] = useCollection(collection(db, 'guests'));
 
-  // Memoize the filtered bookings to prevent unnecessary recalculations
+  // Memoize the filtered bookings for the current month/year
   const filterBookingsForPeriod = useCallback((allBookings: Booking[], year: number, month: number) => {
-    const startDate = new Date(year, month, 1);
-    const endDate = new Date(year, month + 1, 0);
+    const startDate = new Date(year, month, 1, 0, 0, 0);
+    const endDate = new Date(year, month + 1, 0, 23, 59, 59);
     
     return allBookings.filter(booking => {
       try {
         if (!booking.checkIn || !booking.checkOut) return false;
         
-        const checkIn = booking.checkIn.toDate();
-        const checkOut = booking.checkOut.toDate();
+        const checkIn = getDateFromTimestamp(booking.checkIn);
+        const checkOut = getDateFromTimestamp(booking.checkOut);
+        
+        if (!checkIn || !checkOut) return false;
         
         // A booking is in the current month if:
         // 1. Check-in date is before or equal to the end of the month AND
@@ -234,8 +261,11 @@ export default function BookingsCalendarPage() {
       if (!booking.checkIn || !booking.checkOut) return false;
       
       try {
-        const checkIn = booking.checkIn.toDate();
-        const checkOut = booking.checkOut.toDate();
+        const checkIn = getDateFromTimestamp(booking.checkIn);
+        const checkOut = getDateFromTimestamp(booking.checkOut);
+        
+        if (!checkIn || !checkOut) return false;
+        
         const selectedDateCopy = new Date(date);
         return selectedDateCopy >= new Date(checkIn.setHours(0,0,0,0)) && 
                selectedDateCopy <= new Date(checkOut.setHours(23,59,59,999));
@@ -318,8 +348,11 @@ export default function BookingsCalendarPage() {
         if (!booking.checkIn || !booking.checkOut) return false;
         
         try {
-          const checkIn = booking.checkIn.toDate();
-          const checkOut = booking.checkOut.toDate();
+          const checkIn = getDateFromTimestamp(booking.checkIn);
+          const checkOut = getDateFromTimestamp(booking.checkOut);
+          
+          if (!checkIn || !checkOut) return false;
+          
           return date >= new Date(checkIn.setHours(0,0,0,0)) && 
                  date <= new Date(checkOut.setHours(23,59,59,999));
         } catch (error) {
@@ -416,8 +449,11 @@ export default function BookingsCalendarPage() {
         if (!booking.checkIn || !booking.checkOut) return false;
         
         try {
-          const checkIn = booking.checkIn.toDate();
-          const checkOut = booking.checkOut.toDate();
+          const checkIn = getDateFromTimestamp(booking.checkIn);
+          const checkOut = getDateFromTimestamp(booking.checkOut);
+          
+          if (!checkIn || !checkOut) return false;
+          
           return date >= new Date(checkIn.setHours(0,0,0,0)) && 
                  date <= new Date(checkOut.setHours(23,59,59,999));
         } catch (error) {
@@ -467,7 +503,7 @@ export default function BookingsCalendarPage() {
                     }}
                     role="button"
                     tabIndex={0}
-                    aria-label={`Booking for room ${room?.number || 'unknown'}, from ${booking.checkIn.toDate().toLocaleDateString()} to ${booking.checkOut.toDate().toLocaleDateString()}, status: ${booking.status}`}
+                    aria-label={`Booking for room ${room?.number || 'unknown'}, from ${formatDate(getDateFromTimestamp(booking.checkIn) || new Date())} to ${formatDate(getDateFromTimestamp(booking.checkOut) || new Date())}, status: ${booking.status}`}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.stopPropagation();
@@ -477,7 +513,7 @@ export default function BookingsCalendarPage() {
                   >
                     <div className="font-medium">Room {room?.number || 'N/A'}</div>
                     <div className="text-muted-foreground">
-                      {booking.checkIn.toDate().toLocaleDateString()} - {booking.checkOut.toDate().toLocaleDateString()}
+                      {getDateFromTimestamp(booking.checkIn)?.toLocaleDateString() || 'Invalid date'} - {getDateFromTimestamp(booking.checkOut)?.toLocaleDateString() || 'Invalid date'}
                     </div>
                     <div className={`mt-1 text-xs px-1 py-0.5 rounded-full inline-block ${
                       booking.status === 'Confirmed' ? 'bg-green-500/10 text-green-500' :
@@ -626,7 +662,7 @@ export default function BookingsCalendarPage() {
                           >
                             <div className="font-medium">Room {room?.number || 'N/A'}</div>
                             <div className="text-xs text-muted-foreground">
-                              {booking.checkIn.toDate().toLocaleDateString()} - {booking.checkOut.toDate().toLocaleDateString()}
+                              {getDateFromTimestamp(booking.checkIn)?.toLocaleDateString() || 'Invalid date'} - {getDateFromTimestamp(booking.checkOut)?.toLocaleDateString() || 'Invalid date'}
                             </div>
                             <div className={`mt-1 text-xs px-1 py-0.5 rounded-full inline-block ${
                               booking.status === 'Confirmed' ? 'bg-green-500/10 text-green-500' :
@@ -688,13 +724,13 @@ export default function BookingsCalendarPage() {
                   <div>
                     <h3 className="text-sm font-medium text-muted-foreground">Check In</h3>
                     <p className="text-base font-medium">
-                      {selectedBooking.checkIn ? selectedBooking.checkIn.toDate().toLocaleDateString() : 'Not set'}
+                      {selectedBooking.checkIn ? (getDateFromTimestamp(selectedBooking.checkIn)?.toLocaleDateString() || 'Invalid date') : 'Not set'}
                     </p>
                   </div>
                   <div>
                     <h3 className="text-sm font-medium text-muted-foreground">Check Out</h3>
                     <p className="text-base font-medium">
-                      {selectedBooking.checkOut ? selectedBooking.checkOut.toDate().toLocaleDateString() : 'Not set'}
+                      {selectedBooking.checkOut ? (getDateFromTimestamp(selectedBooking.checkOut)?.toLocaleDateString() || 'Invalid date') : 'Not set'}
                     </p>
                   </div>
                 </div>

@@ -712,7 +712,31 @@ export const getReports = async (limitCount = 10) => {
   }
 };
 
-// Helper functions for statistics calculations
+// Helper function to get date object from various formats
+const getDateFromTimestamp = (timestamp: any): Date | null => {
+  try {
+    // Handle Firebase Timestamp objects
+    if (timestamp && typeof timestamp.toDate === 'function') {
+      return timestamp.toDate();
+    }
+    
+    // Handle Date objects
+    if (timestamp instanceof Date) {
+      return timestamp;
+    }
+    
+    // Handle string or number timestamps
+    if (typeof timestamp === 'string' || typeof timestamp === 'number') {
+      return new Date(timestamp);
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error converting timestamp to date:', error);
+    return null;
+  }
+};
+
 const calculateBookingsByDay = (bookings: Booking[], startDate: Date, endDate: Date) => {
   const days = getDaysArray(startDate, endDate);
   
@@ -724,7 +748,8 @@ const calculateBookingsByDay = (bookings: Booking[], startDate: Date, endDate: D
     dayEnd.setHours(23, 59, 59, 999);
     
     const dayBookings = bookings.filter((booking: Booking) => {
-      const checkIn = booking.checkIn.toDate();
+      const checkIn = getDateFromTimestamp(booking.checkIn);
+      if (!checkIn) return false;
       return checkIn >= dayStart && checkIn <= dayEnd;
     });
     
@@ -746,7 +771,8 @@ const calculateRevenueByDay = (bookings: Booking[], startDate: Date, endDate: Da
     dayEnd.setHours(23, 59, 59, 999);
     
     const dayBookings = bookings.filter((booking: Booking) => {
-      const checkIn = booking.checkIn.toDate();
+      const checkIn = getDateFromTimestamp(booking.checkIn);
+      if (!checkIn) return false;
       return checkIn >= dayStart && checkIn <= dayEnd;
     });
     
@@ -770,8 +796,9 @@ const calculateOccupancyByDay = (bookings: Booking[], totalRooms: number, startD
     dayEnd.setHours(23, 59, 59, 999);
     
     const occupiedRooms = bookings.filter((booking: Booking) => {
-      const checkIn = booking.checkIn.toDate();
-      const checkOut = booking.checkOut.toDate();
+      const checkIn = getDateFromTimestamp(booking.checkIn);
+      const checkOut = getDateFromTimestamp(booking.checkOut);
+      if (!checkIn || !checkOut) return false;
       return (checkIn <= dayEnd && checkOut >= dayStart);
     });
     
@@ -796,7 +823,8 @@ const calculateGuestsByDay = (guests: Guest[], startDate: Date, endDate: Date) =
     dayEnd.setHours(23, 59, 59, 999);
     
     const dayGuests = guests.filter((guest: Guest) => {
-      const createdAt = guest.createdAt.toDate();
+      const createdAt = getDateFromTimestamp(guest.createdAt);
+      if (!createdAt) return false;
       return createdAt >= dayStart && createdAt <= dayEnd;
     });
     

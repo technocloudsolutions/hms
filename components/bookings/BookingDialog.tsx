@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Booking, Room, Guest } from '@/lib/types';
 import { Timestamp } from 'firebase/firestore';
+import { getDateFromAny, formatDateForInput } from '@/lib/utils';
 
 interface BookingDialogProps {
   open: boolean;
@@ -84,11 +85,6 @@ export function BookingDialog({
     onSubmit(formData);
   };
 
-  // Helper function to convert Timestamp to YYYY-MM-DD format
-  const timestampToDateString = (timestamp: Timestamp) => {
-    return timestamp.toDate().toISOString().split('T')[0];
-  };
-
   // Helper function to create Timestamp from date string
   const dateStringToTimestamp = (dateString: string) => {
     return Timestamp.fromDate(new Date(dateString));
@@ -99,9 +95,15 @@ export function BookingDialog({
     if (formData.roomId && formData.checkIn && formData.checkOut) {
       const room = rooms.find(r => r.id === formData.roomId);
       if (room) {
-        const checkIn = formData.checkIn.toDate();
-        const checkOut = formData.checkOut.toDate();
-        const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
+        const checkInDate = getDateFromAny(formData.checkIn);
+        const checkOutDate = getDateFromAny(formData.checkOut);
+        
+        if (!checkInDate || !checkOutDate) {
+          console.error('Invalid date format for booking calculation');
+          return;
+        }
+        
+        const nights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24));
         
         // Only update if the calculated amount is different
         if (room.price * nights !== formData.totalAmount) {
@@ -175,7 +177,7 @@ export function BookingDialog({
               <Input
                 id="checkIn"
                 type="date"
-                value={formData.checkIn ? timestampToDateString(formData.checkIn) : ''}
+                value={formData.checkIn ? formatDateForInput(formData.checkIn) : ''}
                 onChange={(e) => handleFormChange('checkIn', dateStringToTimestamp(e.target.value))}
                 min={new Date().toISOString().split('T')[0]}
               />
@@ -185,9 +187,8 @@ export function BookingDialog({
               <Input
                 id="checkOut"
                 type="date"
-                value={formData.checkOut ? timestampToDateString(formData.checkOut) : ''}
+                value={formData.checkOut ? formatDateForInput(formData.checkOut) : ''}
                 onChange={(e) => handleFormChange('checkOut', dateStringToTimestamp(e.target.value))}
-                min={formData.checkIn ? timestampToDateString(formData.checkIn) : ''}
               />
             </div>
           </div>

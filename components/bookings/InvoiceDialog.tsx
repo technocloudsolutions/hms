@@ -110,22 +110,67 @@ export function InvoiceDialog({
   }, [invoice, booking, room]);
 
   // Calculate nights between check-in and check-out
-  function calculateNights(checkIn: Timestamp, checkOut: Timestamp): number {
-    const checkInDate = checkIn.toDate();
-    const checkOutDate = checkOut.toDate();
-    const diffTime = Math.abs(checkOutDate.getTime() - checkInDate.getTime());
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  function calculateNights(checkIn: any, checkOut: any): number {
+    try {
+      let checkInDate: Date;
+      let checkOutDate: Date;
+
+      // Handle Firebase Timestamp objects
+      if (checkIn && typeof checkIn.toDate === 'function') {
+        checkInDate = checkIn.toDate();
+      } else if (checkIn instanceof Date) {
+        checkInDate = checkIn;
+      } else if (typeof checkIn === 'string' || typeof checkIn === 'number') {
+        checkInDate = new Date(checkIn);
+      } else {
+        console.error('Invalid checkIn date format:', checkIn);
+        return 1; // Default to 1 night if invalid format
+      }
+
+      if (checkOut && typeof checkOut.toDate === 'function') {
+        checkOutDate = checkOut.toDate();
+      } else if (checkOut instanceof Date) {
+        checkOutDate = checkOut;
+      } else if (typeof checkOut === 'string' || typeof checkOut === 'number') {
+        checkOutDate = new Date(checkOut);
+      } else {
+        console.error('Invalid checkOut date format:', checkOut);
+        // Default to checkIn + 1 day if invalid format
+        checkOutDate = new Date(checkInDate);
+        checkOutDate.setDate(checkOutDate.getDate() + 1);
+      }
+
+      const diffTime = Math.abs(checkOutDate.getTime() - checkInDate.getTime());
+      return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    } catch (error) {
+      console.error('Error calculating nights:', error);
+      return 1; // Default to 1 night on error
+    }
   }
 
-  // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSubmit(formData);
-  };
-
   // Helper function to convert Timestamp to YYYY-MM-DD format
-  const timestampToDateString = (timestamp: Timestamp) => {
-    return timestamp.toDate().toISOString().split('T')[0];
+  const timestampToDateString = (timestamp: any): string => {
+    try {
+      // Handle Firebase Timestamp objects
+      if (timestamp && typeof timestamp.toDate === 'function') {
+        return timestamp.toDate().toISOString().split('T')[0];
+      }
+      
+      // Handle Date objects
+      if (timestamp instanceof Date) {
+        return timestamp.toISOString().split('T')[0];
+      }
+      
+      // Handle string or number timestamps
+      if (typeof timestamp === 'string' || typeof timestamp === 'number') {
+        return new Date(timestamp).toISOString().split('T')[0];
+      }
+      
+      return '';
+    } catch (error) {
+      console.error('Error converting timestamp to date string:', error);
+      return '';
+    }
   };
 
   // Helper function to create Timestamp from date string
@@ -239,6 +284,12 @@ export function InvoiceDialog({
       }));
     }
   }, [formData.items, formData.taxRate, formData.discountAmount]);
+
+  // Handle form submission
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit(formData);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

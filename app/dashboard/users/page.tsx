@@ -60,6 +60,8 @@ import {
 } from '@/lib/firebase';
 import { User, UserRole, RolePermission } from '@/lib/types';
 import { Timestamp } from 'firebase/firestore';
+import { useToast } from "@/components/ui/use-toast";
+import { cn, safeFormatDate } from "@/lib/utils";
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -347,7 +349,7 @@ export default function UsersPage() {
                             )}
                           </TableCell>
                           <TableCell>
-                            {user.lastLogin ? user.lastLogin.toDate().toLocaleDateString() : 'Never'}
+                            {safeFormatDate(user.lastLogin, 'Never')}
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">

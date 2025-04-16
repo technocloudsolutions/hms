@@ -170,16 +170,60 @@ function BookingsContent() {
       accessorKey: 'checkIn',
       header: 'Check In',
       cell: ({ row }) => {
-        const checkIn = row.getValue('checkIn') as Timestamp;
-        return checkIn?.toDate().toLocaleDateString() || 'N/A';
+        const checkIn = row.getValue('checkIn');
+        if (!checkIn) return 'N/A';
+        
+        try {
+          // Handle Firebase Timestamp objects
+          if (typeof checkIn.toDate === 'function') {
+            return checkIn.toDate().toLocaleDateString();
+          }
+          
+          // Handle string or date objects
+          if (checkIn instanceof Date) {
+            return checkIn.toLocaleDateString();
+          }
+          
+          // Handle string timestamps or ISO date strings
+          if (typeof checkIn === 'string' || typeof checkIn === 'number') {
+            return new Date(checkIn).toLocaleDateString();
+          }
+          
+          return 'Invalid Date';
+        } catch (error) {
+          console.error('Error formatting check-in date:', error);
+          return 'Invalid Date';
+        }
       },
     },
     {
       accessorKey: 'checkOut',
       header: 'Check Out',
       cell: ({ row }) => {
-        const checkOut = row.getValue('checkOut') as Timestamp;
-        return checkOut?.toDate().toLocaleDateString() || 'N/A';
+        const checkOut = row.getValue('checkOut');
+        if (!checkOut) return 'N/A';
+        
+        try {
+          // Handle Firebase Timestamp objects
+          if (typeof checkOut.toDate === 'function') {
+            return checkOut.toDate().toLocaleDateString();
+          }
+          
+          // Handle date objects
+          if (checkOut instanceof Date) {
+            return checkOut.toLocaleDateString();
+          }
+          
+          // Handle string timestamps or ISO date strings
+          if (typeof checkOut === 'string' || typeof checkOut === 'number') {
+            return new Date(checkOut).toLocaleDateString();
+          }
+          
+          return 'Invalid Date';
+        } catch (error) {
+          console.error('Error formatting check-out date:', error);
+          return 'Invalid Date';
+        }
       },
     },
     {
