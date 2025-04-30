@@ -154,6 +154,7 @@ export default function InvoiceDetailPage() {
         element.style.color = '#000000';
         element.style.fontFamily = 'Arial, sans-serif';
         element.style.textShadow = 'none';
+        element.style.backgroundColor = '#ffffff';
         
         if (element.classList.contains('text-muted-foreground')) {
           element.style.color = '#333333';
@@ -161,16 +162,19 @@ export default function InvoiceDetailPage() {
         
         if (element.tagName === 'TABLE') {
           element.style.borderCollapse = 'collapse';
+          element.style.border = '1px solid #ddd';
         }
         
         if (element.tagName === 'TH' || element.tagName === 'TD') {
           element.style.padding = '8px';
           element.style.border = '1px solid #ddd';
+          element.style.color = '#000000';
         }
         
         if (element.tagName === 'TH') {
           element.style.fontWeight = 'bold';
           element.style.backgroundColor = '#f2f2f2';
+          element.style.color = '#000000';
         }
         
         Array.from(element.children).forEach(child => {
@@ -453,21 +457,22 @@ export default function InvoiceDetailPage() {
           </div>
 
           {/* Printable Invoice */}
-          <div id="print-invoice" className="print-container bg-white rounded-lg shadow-lg p-8 mb-8">
+          <div id="print-invoice" className="print-container bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 mb-8 text-black dark:text-white">
             {/* Invoice Header */}
             <div className="print-header flex justify-between items-start mb-8 pb-6 border-b">
               <div>
-                <div className="print-logo text-primary text-2xl font-bold mb-1" style={{ color: '#2563eb' }}>LUXURY HOTEL</div>
-                <div className="text-sm text-muted-foreground" style={{ color: '#333333' }}>
-                  <p>123 Luxury Avenue</p>
-                  <p>Colombo, Sri Lanka</p>
-                  <p>+94 123 456 789</p>
-                  <p>info@luxuryhotel.com</p>
+                <div className="print-logo text-primary text-2xl font-bold mb-1">Rajini by The Waters</div>
+                <div className="text-sm text-muted-foreground dark:text-gray-300">
+                  <p>437 Beralihela, Colony 5</p>
+                  <p>82600 Tissamaharama <br />
+                  Sri Lanka</p>
+                  <p>+94 76 281 0000</p>
+                  <p>info@rajinihotels.com</p>
                 </div>
               </div>
               <div className="text-right">
-                <div className="print-invoice-title text-3xl font-bold mb-1" style={{ color: '#000000' }}>INVOICE</div>
-                <div className="print-invoice-number text-muted-foreground" style={{ color: '#333333' }}>#{invoice.invoiceNumber}</div>
+                <div className="print-invoice-title text-3xl font-bold mb-1">INVOICE</div>
+                <div className="print-invoice-number text-muted-foreground dark:text-gray-300">#{invoice.invoiceNumber}</div>
                 <div className="mt-4">
                   <Badge className={
                     invoice.status === 'Paid' ? 'bg-green-500/10 text-green-500' :
@@ -491,7 +496,7 @@ export default function InvoiceDetailPage() {
                     <div className="font-medium">{guest.name}</div>
                     <div>{guest.email}</div>
                     <div>{guest.phone}</div>
-                    <div className="text-sm text-muted-foreground">{guest.address}</div>
+                    <div className="text-sm text-muted-foreground dark:text-gray-300">{guest.address}</div>
                   </div>
                 )}
               </div>
@@ -500,15 +505,15 @@ export default function InvoiceDetailPage() {
                 <div className="print-section-title">Invoice Details</div>
                 <div className="mt-2 space-y-1">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Issue Date:</span>
+                    <span className="text-muted-foreground dark:text-gray-300">Issue Date:</span>
                     <span>{invoice.issueDate.toDate().toLocaleDateString()}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Due Date:</span>
+                    <span className="text-muted-foreground dark:text-gray-300">Due Date:</span>
                     <span>{invoice.dueDate.toDate().toLocaleDateString()}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Currency:</span>
+                    <span className="text-muted-foreground dark:text-gray-300">Currency:</span>
                     <span>{invoice.currency}</span>
                   </div>
                 </div>
@@ -518,18 +523,18 @@ export default function InvoiceDetailPage() {
                 <div className="print-section-title">Payment Information</div>
                 <div className="mt-2 space-y-1">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Payment Status:</span>
+                    <span className="text-muted-foreground dark:text-gray-300">Payment Status:</span>
                     <span>{invoice.status === 'Paid' ? 'Paid' : 'Pending'}</span>
                   </div>
                   {invoice.status === 'Paid' && invoice.paymentMethod && (
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Payment Method:</span>
+                      <span className="text-muted-foreground dark:text-gray-300">Payment Method:</span>
                       <span>{invoice.paymentMethod}</span>
                     </div>
                   )}
                   {invoice.status === 'Paid' && invoice.paymentDate && (
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Payment Date:</span>
+                      <span className="text-muted-foreground dark:text-gray-300">Payment Date:</span>
                       <span>{invoice.paymentDate.toDate().toLocaleDateString()}</span>
                     </div>
                   )}
@@ -540,24 +545,24 @@ export default function InvoiceDetailPage() {
             {/* Invoice Items */}
             <div className="print-section mb-8">
               <div className="print-section-title mb-4">Invoice Items</div>
-              <table className="print-table w-full">
+              <table className="print-table w-full dark:border-gray-700">
                 <thead>
                   <tr>
-                    <th className="text-left py-3 px-4">Description</th>
-                    <th className="text-left py-3 px-4">Type</th>
-                    <th className="text-right py-3 px-4">Quantity</th>
-                    <th className="text-right py-3 px-4">Unit Price</th>
-                    <th className="text-right py-3 px-4">Amount</th>
+                    <th className="text-left py-3 px-4 dark:bg-gray-700">Description</th>
+                    <th className="text-left py-3 px-4 dark:bg-gray-700">Type</th>
+                    <th className="text-right py-3 px-4 dark:bg-gray-700">Quantity</th>
+                    <th className="text-right py-3 px-4 dark:bg-gray-700">Unit Price</th>
+                    <th className="text-right py-3 px-4 dark:bg-gray-700">Amount</th>
                   </tr>
                 </thead>
                 <tbody>
                   {invoice.items.map((item, index) => (
-                    <tr key={index}>
-                      <td className="py-3 px-4">{item.description}</td>
-                      <td className="py-3 px-4">{item.type}</td>
-                      <td className="text-right py-3 px-4">{item.quantity}</td>
-                      <td className="text-right py-3 px-4">{formatCurrency(item.unitPrice, invoice.currency)}</td>
-                      <td className="text-right py-3 px-4">{formatCurrency(item.amount, invoice.currency)}</td>
+                    <tr key={index} className="dark:border-gray-700">
+                      <td className="py-3 px-4 dark:border-gray-700">{item.description}</td>
+                      <td className="py-3 px-4 dark:border-gray-700">{item.type}</td>
+                      <td className="text-right py-3 px-4 dark:border-gray-700">{item.quantity}</td>
+                      <td className="text-right py-3 px-4 dark:border-gray-700">{formatCurrency(item.unitPrice, invoice.currency)}</td>
+                      <td className="text-right py-3 px-4 dark:border-gray-700">{formatCurrency(item.amount, invoice.currency)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -567,17 +572,17 @@ export default function InvoiceDetailPage() {
             {/* Totals */}
             <div className="print-totals ml-auto w-full md:w-1/2 lg:w-2/5">
               <div className="print-total-row">
-                <span className="text-muted-foreground">Subtotal:</span>
+                <span className="text-muted-foreground dark:text-gray-300">Subtotal:</span>
                 <span>{formatCurrency(invoice.subtotal, invoice.currency)}</span>
               </div>
               <div className="print-total-row">
-                <span className="text-muted-foreground">Tax ({invoice.taxRate}%):</span>
+                <span className="text-muted-foreground dark:text-gray-300">Tax ({invoice.taxRate}%):</span>
                 <span>{formatCurrency(invoice.taxAmount, invoice.currency)}</span>
               </div>
               {invoice.discountAmount > 0 && (
                 <div className="print-total-row">
-                  <span className="text-muted-foreground">Discount:</span>
-                  <span className="text-red-500">-{formatCurrency(invoice.discountAmount, invoice.currency)}</span>
+                  <span className="text-muted-foreground dark:text-gray-300">Discount:</span>
+                  <span className="text-red-500 dark:text-red-400">-{formatCurrency(invoice.discountAmount, invoice.currency)}</span>
                 </div>
               )}
               <div className="print-total-row print-grand-total">
@@ -586,7 +591,7 @@ export default function InvoiceDetailPage() {
               </div>
               
               {convertedCurrency && (
-                <div className="print-total-row text-sm text-muted-foreground">
+                <div className="print-total-row text-sm text-muted-foreground dark:text-gray-300">
                   <span>Equivalent in {convertedCurrency}:</span>
                   <span>{formatCurrency(convertedTotal, convertedCurrency)}</span>
                 </div>
@@ -595,14 +600,14 @@ export default function InvoiceDetailPage() {
 
             {/* Notes */}
             {invoice.notes && (
-              <div className="print-notes bg-muted/50 p-4 rounded-md mt-8">
+              <div className="print-notes bg-muted/50 dark:bg-gray-700/50 p-4 rounded-md mt-8">
                 <div className="print-notes-title font-medium">Notes</div>
-                <p className="text-muted-foreground">{invoice.notes}</p>
+                <p className="text-muted-foreground dark:text-gray-300">{invoice.notes}</p>
               </div>
             )}
 
             {/* Footer */}
-            <div className="print-footer mt-12 pt-6 border-t text-center text-sm text-muted-foreground">
+            <div className="print-footer mt-12 pt-6 border-t text-center text-sm text-muted-foreground dark:text-gray-300">
               <p>Thank you for your business!</p>
               <p className="mt-1">For any inquiries regarding this invoice, please contact our finance department at finance@luxuryhotel.com</p>
             </div>

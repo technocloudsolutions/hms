@@ -166,7 +166,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           {/* Logo */}
           <div className="h-16 flex items-center justify-center border-b border-border/50">
             <h1 className="text-2xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
-              Ark Cabin Villa
+            Rajini by The Waters
             </h1>
           </div>
 
