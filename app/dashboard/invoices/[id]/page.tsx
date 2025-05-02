@@ -13,6 +13,7 @@ import { useToast } from '@/components/ui/use-toast';
 import Head from 'next/head';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import Image from 'next/image';
 
 export default function InvoiceDetailPage() {
   const params = useParams();
@@ -177,6 +178,13 @@ export default function InvoiceDetailPage() {
           element.style.color = '#000000';
         }
         
+        // Ensure images are visible
+        if (element.tagName === 'IMG') {
+          element.style.maxWidth = '100%';
+          element.style.height = 'auto';
+          element.style.display = 'block';
+        }
+        
         Array.from(element.children).forEach(child => {
           applyDarkTextStyles(child as HTMLElement);
         });
@@ -194,6 +202,22 @@ export default function InvoiceDetailPage() {
       // Temporarily append the clone to the document
       document.body.appendChild(clone);
 
+      // Make sure images are loaded before taking screenshot
+      const loadImage = (image: HTMLImageElement): Promise<void> => {
+        return new Promise((resolve) => {
+          if (image.complete) {
+            resolve();
+          } else {
+            image.onload = () => resolve();
+            image.onerror = () => resolve(); // Continue even if image fails
+          }
+        });
+      };
+
+      // Wait for all images to load
+      const images = Array.from(clone.getElementsByTagName('img'));
+      await Promise.all(images.map(img => loadImage(img)));
+
       // Use html2canvas with improved settings for better text quality
       const canvas = await html2canvas(clone, {
         scale: 3, // Higher scale for better text quality
@@ -201,6 +225,7 @@ export default function InvoiceDetailPage() {
         logging: false,
         backgroundColor: '#ffffff',
         allowTaint: true,
+        imageTimeout: 15000, // Longer timeout for image loading
         removeContainer: false
       });
       
@@ -216,7 +241,8 @@ export default function InvoiceDetailPage() {
         orientation: 'portrait',
         unit: 'mm',
         format: 'a4',
-        compress: false // Disable compression for better quality
+        compress: false, // Disable compression for better quality
+        hotfixes: ['px_scaling']
       });
 
       // Calculate dimensions to fit the image properly on the page
@@ -314,9 +340,14 @@ export default function InvoiceDetailPage() {
             }
             
             .print-logo {
-              font-size: 1.5rem !important;
-              font-weight: bold !important;
-              color: #2563eb !important;
+              margin-bottom: 1rem !important;
+              display: block !important;
+            }
+            
+            .print-logo img {
+              max-width: 180px !important;
+              height: auto !important;
+              display: block !important;
             }
             
             .print-invoice-title {
@@ -461,7 +492,17 @@ export default function InvoiceDetailPage() {
             {/* Invoice Header */}
             <div className="print-header flex justify-between items-start mb-8 pb-6 border-b">
               <div>
-                <div className="print-logo text-primary text-2xl font-bold mb-1">Rajini by The Waters</div>
+                <div className="print-logo mb-3">
+                  <Image 
+                    src="/logo.png" 
+                    alt="Rajini by The Waters" 
+                    width={180} 
+                    height={60}
+                    className="mb-2"
+                    priority
+                    unoptimized
+                  />
+                </div>
                 <div className="text-sm text-muted-foreground dark:text-gray-300">
                   <p>437 Beralihela, Colony 5</p>
                   <p>82600 Tissamaharama <br />
