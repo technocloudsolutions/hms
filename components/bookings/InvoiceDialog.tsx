@@ -60,6 +60,8 @@ export function InvoiceDialog({
       taxAmount: calculateNights(booking.checkIn, booking.checkOut) * room.price * 0.1,
       discountAmount: 0,
       totalAmount: calculateNights(booking.checkIn, booking.checkOut) * room.price * 1.1,
+      advancePayment: 0, // Default advance payment
+      remainingBalance: calculateNights(booking.checkIn, booking.checkOut) * room.price * 1.1, // Total by default
       currency: 'USD',
       status: 'Draft',
       notes: '',
@@ -101,6 +103,8 @@ export function InvoiceDialog({
         taxAmount: calculateNights(booking.checkIn, booking.checkOut) * room.price * 0.1,
         discountAmount: 0,
         totalAmount: calculateNights(booking.checkIn, booking.checkOut) * room.price * 1.1,
+        advancePayment: 0, // Default advance payment
+        remainingBalance: calculateNights(booking.checkIn, booking.checkOut) * room.price * 1.1, // Total by default
         currency: 'USD',
         status: 'Draft',
         notes: '',
@@ -269,21 +273,39 @@ export function InvoiceDialog({
     });
   };
 
+  // Handle advance payment change
+  const handleAdvancePaymentChange = (value: number) => {
+    setFormData(prev => {
+      const totalAmount = prev.totalAmount || 0;
+      const advancePayment = Math.min(value, totalAmount); // Cannot pay more than total
+      const remainingBalance = totalAmount - advancePayment;
+      
+      return {
+        ...prev,
+        advancePayment,
+        remainingBalance
+      };
+    });
+  };
+
   // Recalculate totals when items, tax rate, or discount changes
   useEffect(() => {
     if (formData.items) {
       const subtotal = formData.items.reduce((sum, item) => sum + item.amount, 0);
       const taxAmount = subtotal * (formData.taxRate || 0) / 100;
       const totalAmount = subtotal + taxAmount - (formData.discountAmount || 0);
+      const advancePayment = formData.advancePayment || 0;
+      const remainingBalance = totalAmount - advancePayment;
       
       setFormData(prev => ({
         ...prev,
         subtotal,
         taxAmount,
-        totalAmount
+        totalAmount,
+        remainingBalance
       }));
     }
-  }, [formData.items, formData.taxRate, formData.discountAmount]);
+  }, [formData.items, formData.taxRate, formData.discountAmount, formData.advancePayment]);
 
   // Handle form submission
   const handleSubmit = (e: React.FormEvent) => {
@@ -522,6 +544,30 @@ export function InvoiceDialog({
                 id="totalAmount"
                 type="number"
                 value={formData.totalAmount || 0}
+                disabled
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="advancePayment">Advance Payment</Label>
+              <Input
+                id="advancePayment"
+                type="number"
+                min="0"
+                step="0.01"
+                max={formData.totalAmount || 0}
+                value={formData.advancePayment || 0}
+                onChange={(e) => handleAdvancePaymentChange(parseFloat(e.target.value))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="remainingBalance">Remaining Balance</Label>
+              <Input
+                id="remainingBalance"
+                type="number"
+                value={formData.remainingBalance || 0}
                 disabled
               />
             </div>

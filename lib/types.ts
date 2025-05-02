@@ -321,6 +321,8 @@ export interface Invoice {
   taxAmount: number;
   discountAmount: number;
   totalAmount: number;
+  advancePayment?: number; // Amount paid in advance
+  remainingBalance?: number; // Remaining amount to be paid
   currency: 'USD' | 'LKR';
   exchangeRate?: number; // For LKR conversion
   notes?: string;
