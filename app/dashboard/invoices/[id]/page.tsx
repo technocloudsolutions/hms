@@ -2,11 +2,12 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { Timestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { getInvoiceById, getExchangeRate, getGuestById, getRoomById } from '@/lib/firebase';
+import { getInvoiceById, getExchangeRate, getGuestById, getRoomById, updateInvoice } from '@/lib/firebase';
 import { Invoice, Guest, Room } from '@/lib/types';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
-import { ArrowLeft, Download } from 'lucide-react';
+import { ArrowLeft, Download, Edit, Save } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
@@ -16,6 +17,25 @@ import jsPDF from 'jspdf';
 import Image from 'next/image';
 import InvoiceSignatures from '@/components/InvoiceSignatures';
 import InvoiceImplLive from '@/components/InvoiceImplLive';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // Extend the Invoice type to include roomId property that might be present
 interface ExtendedInvoice extends Invoice {
@@ -34,6 +54,8 @@ export default function InvoiceDetailPage() {
   const [convertedCurrency, setConvertedCurrency] = useState<'USD' | 'LKR' | null>(null);
   const [convertedRate, setConvertedRate] = useState<number>(1);
   const [convertedTotal, setConvertedTotal] = useState<number>(0);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedInvoice, setEditedInvoice] = useState<ExtendedInvoice | null>(null);
 
   useEffect(() => {
     const fetchInvoice = async () => {
@@ -76,17 +98,17 @@ export default function InvoiceDetailPage() {
           } catch (error) {
             console.error('Error fetching guest:', error);
             // Fallback if guest fetch fails
-            setGuest({
-              id: invoiceData.guestId,
+        setGuest({
+          id: invoiceData.guestId,
               name: 'Guest',
-              email: 'guest@example.com',
-              phone: '+1234567890',
+          email: 'guest@example.com',
+          phone: '+1234567890',
               address: 'Address not available',
               idType: 'Unknown',
               idNumber: 'Unknown',
-              createdAt: invoiceData.createdAt,
-              updatedAt: invoiceData.updatedAt,
-            });
+          createdAt: invoiceData.createdAt,
+          updatedAt: invoiceData.updatedAt,
+        });
           }
         }
         
@@ -130,28 +152,28 @@ export default function InvoiceDetailPage() {
         } catch (error) {
           console.error('Error fetching room:', error);
           // Fallback with room data
-          setRoom({
-            id: 'room-id',
+        setRoom({
+          id: 'room-id',
             number: invoiceData.items?.[0]?.description?.split(' - ')?.[0]?.replace('Room ', '') || '101',
             type: 'Suite',
             price: invoiceData.items?.[0]?.unitPrice || 150,
-            status: 'Occupied',
-            amenities: ['WiFi', 'TV', 'AC'],
+          status: 'Occupied',
+          amenities: ['WiFi', 'TV', 'AC'],
             description: 'Room details not available',
-            images: [],
-            floor: 1,
-            capacity: 2,
-            size: 30,
-            view: 'Ocean',
-            bedType: 'King',
-            lastCleaned: invoiceData.createdAt,
-            lastMaintenance: invoiceData.createdAt,
-            rating: 4.5,
-            reviews: 10,
-            specialOffers: [],
-            accessibility: true,
-            smoking: false,
-          });
+          images: [],
+          floor: 1,
+          capacity: 2,
+          size: 30,
+          view: 'Ocean',
+          bedType: 'King',
+          lastCleaned: invoiceData.createdAt,
+          lastMaintenance: invoiceData.createdAt,
+          rating: 4.5,
+          reviews: 10,
+          specialOffers: [],
+          accessibility: true,
+          smoking: false,
+        });
         }
         
       } catch (error) {
@@ -396,6 +418,144 @@ export default function InvoiceDetailPage() {
     }
   };
 
+  // Handler to start editing
+  const handleStartEdit = () => {
+    setEditedInvoice(invoice);
+    setIsEditing(true);
+  };
+
+  // Handler to save edited invoice
+  const handleSaveInvoice = async () => {
+    if (!editedInvoice) return;
+    
+    try {
+      toast({
+        title: 'Saving changes...',
+        description: 'Please wait while we update the invoice.',
+      });
+      
+      // Final calculation of all financial values
+      let finalInvoice = {...editedInvoice};
+      
+      // Ensure all item amounts are correctly calculated
+      finalInvoice.items = finalInvoice.items.map(item => ({
+        ...item,
+        amount: (item.quantity || 1) * (item.unitPrice || 0)
+      }));
+      
+      // Recalculate all totals
+      const subtotal = finalInvoice.items.reduce((sum, item) => sum + (item.amount || 0), 0);
+      finalInvoice.subtotal = parseFloat(subtotal.toFixed(2));
+      
+      const taxAmount = (subtotal * (finalInvoice.taxRate || 0)) / 100;
+      finalInvoice.taxAmount = parseFloat(taxAmount.toFixed(2));
+      
+      const discountAmount = finalInvoice.discountAmount || 0;
+      const totalAmount = subtotal + taxAmount - discountAmount;
+      finalInvoice.totalAmount = parseFloat(totalAmount.toFixed(2));
+      
+      const advancePayment = finalInvoice.advancePayment || 0;
+      finalInvoice.remainingBalance = parseFloat((totalAmount - advancePayment).toFixed(2));
+      
+      await updateInvoice(finalInvoice.id, finalInvoice);
+      
+      // Update the invoice state with edited data
+      setInvoice(finalInvoice);
+      setIsEditing(false);
+      
+      toast({
+        title: 'Success',
+        description: 'Invoice updated successfully.',
+        variant: 'default',
+      });
+    } catch (error) {
+      console.error('Error updating invoice:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update invoice.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Handler for invoice field changes
+  const handleInvoiceChange = (field: string, value: any) => {
+    if (!editedInvoice) return;
+    
+    let updatedInvoice = {
+      ...editedInvoice,
+      [field]: value
+    };
+    
+    // Recalculate totals when items, tax rate, or discount changes
+    if (field === 'items' || field === 'taxRate' || field === 'discountAmount') {
+      // Calculate subtotal from all items
+      const subtotal = updatedInvoice.items.reduce((sum, item) => sum + (item.amount || 0), 0);
+      updatedInvoice.subtotal = subtotal;
+      
+      // Calculate tax amount based on subtotal and tax rate
+      const taxAmount = (subtotal * (updatedInvoice.taxRate || 0)) / 100;
+      updatedInvoice.taxAmount = parseFloat(taxAmount.toFixed(2));
+      
+      // Calculate total with tax and subtract discount
+      const discountAmount = updatedInvoice.discountAmount || 0;
+      const totalAmount = subtotal + taxAmount - discountAmount;
+      updatedInvoice.totalAmount = parseFloat(totalAmount.toFixed(2));
+      
+      // Calculate remaining balance (total minus advance payment)
+      const advancePayment = updatedInvoice.advancePayment || 0;
+      updatedInvoice.remainingBalance = parseFloat((totalAmount - advancePayment).toFixed(2));
+    } else if (field === 'advancePayment') {
+      // Recalculate remaining balance when advance payment changes
+      const totalAmount = updatedInvoice.totalAmount || 0;
+      const advancePayment = updatedInvoice.advancePayment || 0;
+      updatedInvoice.remainingBalance = parseFloat((totalAmount - advancePayment).toFixed(2));
+    }
+    
+    setEditedInvoice(updatedInvoice);
+  };
+
+  // Add a function to handle payment of the due amount
+  const handlePayDueAmount = async () => {
+    if (!invoice) return;
+    
+    try {
+      toast({
+        title: 'Processing payment...',
+        description: 'Please wait while we process your payment.',
+      });
+      
+      // Create an updated invoice object with payment applied
+      const paidInvoice: ExtendedInvoice = {
+        ...invoice,
+        status: 'Paid',
+        paymentDate: invoice.paymentDate || Timestamp.now(),
+        paymentMethod: invoice.paymentMethod || 'Cash',
+        advancePayment: (invoice.advancePayment || 0) + (invoice.remainingBalance || 0),
+        remainingBalance: 0
+      };
+      
+      // Save the updated invoice to the database
+      await updateInvoice(paidInvoice.id, paidInvoice);
+      
+      // Update the invoice state
+      setInvoice(paidInvoice);
+      
+      toast({
+        title: 'Payment successful',
+        description: `Payment of ${formatCurrency(invoice.remainingBalance || 0, invoice.currency)} has been processed.`,
+        variant: 'default',
+      });
+    } catch (error) {
+      console.error('Error processing payment:', error);
+      toast({
+        title: 'Payment failed',
+        description: 'There was an error processing your payment. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -453,10 +613,407 @@ export default function InvoiceDetailPage() {
               <Button variant="outline" onClick={handleCurrencyConversion}>
                 Show in {invoice?.currency === 'USD' ? 'LKR' : 'USD'}
               </Button>
+              {invoice && invoice.status !== 'Paid' && (invoice.remainingBalance || 0) > 0 && (
+                <Button 
+                  variant="outline" 
+                  className="bg-green-50 hover:bg-green-100 text-green-600 border-green-200"
+                  onClick={handlePayDueAmount}
+                >
+                  <span className="mr-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect width="20" height="14" x="2" y="5" rx="2" />
+                      <line x1="2" x2="22" y1="10" y2="10" />
+                    </svg>
+                  </span>
+                  Pay {formatCurrency(invoice.remainingBalance || 0, invoice.currency)}
+                </Button>
+              )}
               <Button onClick={handleDownloadPDF}>
                 <Download className="mr-2 h-4 w-4" />
                 Download PDF
               </Button>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" onClick={handleStartEdit}>
+                    <Edit className="mr-2 h-4 w-4" />
+                    Edit Invoice
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[1225px] max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Edit Invoice</DialogTitle>
+                    <DialogDescription>
+                      Make changes to the invoice details. Click save when you're done.
+                    </DialogDescription>
+                  </DialogHeader>
+                  {editedInvoice && (
+                    <div className="grid gap-4 py-4">
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="invoiceNumber" className="text-right">
+                          Invoice Number
+                        </Label>
+                        <Input
+                          id="invoiceNumber"
+                          value={editedInvoice.invoiceNumber}
+                          onChange={(e) => handleInvoiceChange('invoiceNumber', e.target.value)}
+                          className="col-span-3"
+                        />
+                      </div>
+                      
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="status" className="text-right">
+                          Status
+                        </Label>
+                        <Select
+                          value={editedInvoice.status}
+                          onValueChange={(value) => handleInvoiceChange('status', value)}
+                        >
+                          <SelectTrigger className="col-span-3">
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Draft">Draft</SelectItem>
+                            <SelectItem value="Issued">Issued</SelectItem>
+                            <SelectItem value="Paid">Paid</SelectItem>
+                            <SelectItem value="Overdue">Overdue</SelectItem>
+                            <SelectItem value="Cancelled">Cancelled</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="currency" className="text-right">
+                          Currency
+                        </Label>
+                        <Select
+                          value={editedInvoice.currency}
+                          onValueChange={(value) => handleInvoiceChange('currency', value)}
+                        >
+                          <SelectTrigger className="col-span-3">
+                            <SelectValue placeholder="Select currency" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="USD">USD</SelectItem>
+                            <SelectItem value="LKR">LKR</SelectItem>
+                            <SelectItem value="EUR">EUR</SelectItem>
+                            <SelectItem value="GBP">GBP</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      {editedInvoice.status === 'Paid' && (
+                        <>
+                          <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="paymentMethod" className="text-right">
+                              Payment Method
+                            </Label>
+                            <Select
+                              value={editedInvoice.paymentMethod || ''}
+                              onValueChange={(value) => handleInvoiceChange('paymentMethod', value)}
+                            >
+                              <SelectTrigger className="col-span-3">
+                                <SelectValue placeholder="Select payment method" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Credit Card">Credit Card</SelectItem>
+                                <SelectItem value="Cash">Cash</SelectItem>
+                                <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+                                <SelectItem value="PayPal">PayPal</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="paymentDate" className="text-right">
+                              Payment Date
+                            </Label>
+                            <Input
+                              id="paymentDate"
+                              type="date"
+                              value={
+                                editedInvoice.paymentDate ? 
+                                (typeof editedInvoice.paymentDate.toDate === 'function'
+                                  ? editedInvoice.paymentDate.toDate().toISOString().split('T')[0]
+                                  : new Date(editedInvoice.paymentDate as any).toISOString().split('T')[0]) 
+                                : ''
+                              }
+                              onChange={(e) => {
+                                const date = new Date(e.target.value);
+                                handleInvoiceChange('paymentDate', date);
+                              }}
+                              className="col-span-3"
+                            />
+                          </div>
+                        </>
+                      )}
+                      
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="issueDate" className="text-right">
+                          Issue Date
+                        </Label>
+                        <Input
+                          id="issueDate"
+                          type="date"
+                          value={
+                            editedInvoice.issueDate ? 
+                            (typeof editedInvoice.issueDate.toDate === 'function'
+                              ? editedInvoice.issueDate.toDate().toISOString().split('T')[0]
+                              : new Date(editedInvoice.issueDate as any).toISOString().split('T')[0]) 
+                            : ''
+                          }
+                          onChange={(e) => {
+                            const date = new Date(e.target.value);
+                            handleInvoiceChange('issueDate', date);
+                          }}
+                          className="col-span-3"
+                        />
+                      </div>
+                      
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="dueDate" className="text-right">
+                          Due Date
+                        </Label>
+                        <Input
+                          id="dueDate"
+                          type="date"
+                          value={
+                            editedInvoice.dueDate ? 
+                            (typeof editedInvoice.dueDate.toDate === 'function'
+                              ? editedInvoice.dueDate.toDate().toISOString().split('T')[0]
+                              : new Date(editedInvoice.dueDate as any).toISOString().split('T')[0]) 
+                            : ''
+                          }
+                          onChange={(e) => {
+                            const date = new Date(e.target.value);
+                            handleInvoiceChange('dueDate', date);
+                          }}
+                          className="col-span-3"
+                        />
+                      </div>
+                      
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="taxRate" className="text-right">
+                          Tax Rate (%)
+                        </Label>
+                        <Input
+                          id="taxRate"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          max="100"
+                          value={editedInvoice.taxRate || 0}
+                          onChange={(e) => handleInvoiceChange('taxRate', parseFloat(e.target.value))}
+                          className="col-span-3"
+                        />
+                      </div>
+                      
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="discountAmount" className="text-right">
+                          Discount Amount
+                        </Label>
+                        <Input
+                          id="discountAmount"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={editedInvoice.discountAmount || 0}
+                          onChange={(e) => handleInvoiceChange('discountAmount', parseFloat(e.target.value))}
+                          className="col-span-3"
+                        />
+                      </div>
+                      
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="advancePayment" className="text-right">
+                          Advance Payment
+                        </Label>
+                        <Input
+                          id="advancePayment"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={editedInvoice.advancePayment || 0}
+                          onChange={(e) => handleInvoiceChange('advancePayment', parseFloat(e.target.value))}
+                          className="col-span-3"
+                        />
+                      </div>
+                      
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="notes" className="text-right">
+                          Notes
+                        </Label>
+                        <Textarea
+                          id="notes"
+                          value={editedInvoice.notes || ''}
+                          onChange={(e) => handleInvoiceChange('notes', e.target.value)}
+                          className="col-span-3"
+                        />
+                      </div>
+                      
+                      <div className="col-span-4 mt-2">
+                        <h3 className="font-medium text-sm mb-2">Invoice Items</h3>
+                        <div className="border rounded-md p-3 space-y-3">
+                          {editedInvoice.items.map((item, index) => (
+                            <div key={index} className="grid grid-cols-12 gap-2 items-center border-b pb-3">
+                              <div className="col-span-5">
+                                <Label htmlFor={`item-${index}-description`} className="text-xs mb-1 block">
+                                  Description
+                                </Label>
+                                <Input
+                                  id={`item-${index}-description`}
+                                  value={item.description}
+                                  onChange={(e) => {
+                                    const updatedItems = [...editedInvoice.items];
+                                    updatedItems[index] = {
+                                      ...updatedItems[index],
+                                      description: e.target.value
+                                    };
+                                    handleInvoiceChange('items', updatedItems);
+                                  }}
+                                />
+                              </div>
+                              <div className="col-span-2">
+                                <Label htmlFor={`item-${index}-type`} className="text-xs mb-1 block">
+                                  Type
+                                </Label>
+                                <Select
+                                  value={item.type}
+                                  onValueChange={(value) => {
+                                    const updatedItems = [...editedInvoice.items];
+                                    updatedItems[index] = {
+                                      ...updatedItems[index],
+                                      type: value as any
+                                    };
+                                    handleInvoiceChange('items', updatedItems);
+                                  }}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Room">Room</SelectItem>
+                                    <SelectItem value="Service">Service</SelectItem>
+                                    <SelectItem value="Activity">Activity</SelectItem>
+                                    <SelectItem value="Food">Food</SelectItem>
+                                    <SelectItem value="Other">Other</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="col-span-1">
+                                <Label htmlFor={`item-${index}-quantity`} className="text-xs mb-1 block">
+                                  Qty
+                                </Label>
+                                <Input
+                                  id={`item-${index}-quantity`}
+                                  type="number"
+                                  min="1"
+                                  value={item.quantity}
+                                  onChange={(e) => {
+                                    const updatedItems = [...editedInvoice.items];
+                                    const quantity = parseInt(e.target.value) || 1;
+                                    updatedItems[index] = {
+                                      ...updatedItems[index],
+                                      quantity,
+                                      amount: quantity * (updatedItems[index].unitPrice || 0)
+                                    };
+                                    handleInvoiceChange('items', updatedItems);
+                                  }}
+                                />
+                              </div>
+                              <div className="col-span-2">
+                                <Label htmlFor={`item-${index}-unitPrice`} className="text-xs mb-1 block">
+                                  Unit Price
+                                </Label>
+                                <Input
+                                  id={`item-${index}-unitPrice`}
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  value={item.unitPrice || 0}
+                                  onChange={(e) => {
+                                    const updatedItems = [...editedInvoice.items];
+                                    const unitPrice = parseFloat(e.target.value) || 0;
+                                    updatedItems[index] = {
+                                      ...updatedItems[index],
+                                      unitPrice,
+                                      amount: (updatedItems[index].quantity || 1) * unitPrice
+                                    };
+                                    handleInvoiceChange('items', updatedItems);
+                                  }}
+                                />
+                              </div>
+                              <div className="col-span-1">
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="mt-6"
+                                  onClick={() => {
+                                    const updatedItems = [...editedInvoice.items];
+                                    updatedItems.splice(index, 1);
+                                    handleInvoiceChange('items', updatedItems);
+                                  }}
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M3 6h18"></path>
+                                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                                  </svg>
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                          
+                          <Button 
+                            variant="outline" 
+                            className="w-full mt-2"
+                            onClick={() => {
+                              const updatedItems = [...editedInvoice.items];
+                              updatedItems.push({
+                                description: 'New Item',
+                                type: 'Other',
+                                quantity: 1,
+                                unitPrice: 0,
+                                amount: 0
+                              });
+                              handleInvoiceChange('items', updatedItems);
+                            }}
+                          >
+                            Add Item
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <DialogFooter className="flex justify-between">
+                    {editedInvoice && editedInvoice.status !== 'Paid' && (editedInvoice.remainingBalance || 0) > 0 && (
+                      <Button 
+                        variant="outline" 
+                        className="bg-green-50 hover:bg-green-100 text-green-600 border-green-200"
+                        onClick={() => {
+                          // Mark as paid
+                          const today = Timestamp.now();
+                          handleInvoiceChange('status', 'Paid');
+                          handleInvoiceChange('paymentDate', today);
+                          handleInvoiceChange('paymentMethod', editedInvoice.paymentMethod || 'Cash');
+                          handleInvoiceChange('advancePayment', (editedInvoice.advancePayment || 0) + (editedInvoice.remainingBalance || 0));
+                          handleInvoiceChange('remainingBalance', 0);
+                        }}
+                      >
+                        <span className="mr-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect width="20" height="14" x="2" y="5" rx="2" />
+                            <line x1="2" x2="22" y1="10" y2="10" />
+                          </svg>
+                        </span>
+                        Pay {formatCurrency(editedInvoice.remainingBalance || 0, editedInvoice.currency || 'USD')}
+                      </Button>
+                    )}
+                    <Button type="submit" onClick={handleSaveInvoice}>
+                      <Save className="mr-2 h-4 w-4" />
+                      Save Changes
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
 
@@ -466,7 +1023,7 @@ export default function InvoiceDetailPage() {
               <InvoiceImplLive 
                 invoice={invoice} 
                 guest={guest} 
-                room={room} 
+                room={room}
               />
             )}
           </div>

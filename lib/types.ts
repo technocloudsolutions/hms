@@ -31,6 +31,7 @@ export interface Guest {
   email: string;
   phone: string;
   address: string;
+  country: string;
   idType: string;
   idNumber: string;
   createdAt: Timestamp;

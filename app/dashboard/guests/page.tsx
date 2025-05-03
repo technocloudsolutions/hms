@@ -105,6 +105,10 @@ export default function GuestsPage() {
       header: 'Address',
     },
     {
+      accessorKey: 'country',
+      header: 'Country',
+    },
+    {
       accessorKey: 'idType',
       header: 'ID Type',
     },

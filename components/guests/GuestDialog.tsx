@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Guest } from '@/lib/types';
 
 interface GuestDialogProps {
@@ -14,6 +15,26 @@ interface GuestDialogProps {
   guest?: Guest;
   mode: 'create' | 'edit';
 }
+
+// Common countries list
+const COMMON_COUNTRIES = [
+  "Australia",
+  "Canada",
+  "China", 
+  "France",
+  "Germany",
+  "India",
+  "Italy",
+  "Japan",
+  "Russia",
+  "Singapore",
+  "South Korea",
+  "Sri Lanka",
+  "Thailand",
+  "United Arab Emirates",
+  "United Kingdom",
+  "United States",
+];
 
 export function GuestDialog({ 
   open, 
@@ -27,10 +48,22 @@ export function GuestDialog({
     email: '',
     phone: '',
     address: '',
-    idNumber: '',
+    country: '',
     idType: 'Passport',
+    idNumber: '',
     ...guest
   });
+
+  // Add this state to track if we're using a custom country
+  const [isCustomCountry, setIsCustomCountry] = React.useState(false);
+
+  // Initialize with proper state based on existing data
+  React.useEffect(() => {
+    if (guest && guest.country) {
+      // Check if the guest's country is in our common list
+      setIsCustomCountry(!COMMON_COUNTRIES.includes(guest.country));
+    }
+  }, [guest]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,7 +98,6 @@ export function GuestDialog({
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               placeholder="john@example.com"
-              required
             />
           </div>
 
@@ -87,10 +119,56 @@ export function GuestDialog({
               id="address"
               value={formData.address}
               onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-              placeholder="123 Main St, City, Country"
+              placeholder="123 Main St, City"
               required
             />
           </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="country">Country</Label>
+            <Select
+              value={!isCustomCountry ? formData.country || '' : 'other'}
+              onValueChange={(value) => {
+                if (value === 'other') {
+                  setIsCustomCountry(true);
+                  // Don't change the country value yet
+                } else {
+                  setIsCustomCountry(false);
+                  setFormData({ ...formData, country: value });
+                }
+              }}
+            >
+              <SelectTrigger id="country">
+                <SelectValue placeholder="Select a country" />
+              </SelectTrigger>
+              <SelectContent>
+                {COMMON_COUNTRIES.map((country) => (
+                  <SelectItem key={country} value={country}>
+                    {country}
+                  </SelectItem>
+                ))}
+                <SelectItem value="other">Other (Specify)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {isCustomCountry && (
+            <div className="space-y-2">
+              <Label htmlFor="countryInput">Specify Country</Label>
+              <Input
+                id="countryInput"
+                value={formData.country || ''}
+                onChange={(e) => {
+                  setFormData({ 
+                    ...formData, 
+                    country: e.target.value,
+                  });
+                }}
+                placeholder="Enter country name"
+                required
+              />
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
