@@ -228,7 +228,8 @@ const InvoiceImplLive: React.FC<InvoiceImplLiveProps> = ({ invoice, guest, room 
           </span>
         </div>
         
-        {(invoice.advancePayment || 0) > 0 && (
+        {/* Only show advance payment when invoice is not fully paid */}
+        {(invoice.advancePayment || 0) > 0 && invoice.status !== 'Paid' && (
           <div className="print-total-row print-advance-payment flex justify-between pt-1.5 pb-1.5">
             <span className="text-muted-foreground dark:text-gray-300">Advance Payment:</span>
             <span className="text-green-600 dark:text-green-400 font-medium">
@@ -241,7 +242,8 @@ const InvoiceImplLive: React.FC<InvoiceImplLiveProps> = ({ invoice, guest, room 
           </div>
         )}
         
-        {(invoice.remainingBalance || 0) > 0 && (
+        {/* Only show remaining balance when invoice is not fully paid */}
+        {(invoice.remainingBalance || 0) > 0 && invoice.status !== 'Paid' && (
           <div className="print-total-row print-remaining-balance flex justify-between border-t border-gray-300 pt-1.5">
             <span className="font-bold text-gray-900 dark:text-white">Remaining Balance:</span>
             <span className="font-bold text-gray-900 dark:text-white">
