@@ -203,6 +203,22 @@ export const deleteRoom = async (id: string) => {
   }
 };
 
+export const getRoomById = async (id: string) => {
+  try {
+    const roomRef = doc(db, 'rooms', id);
+    const roomSnapshot = await getDoc(roomRef);
+    
+    if (roomSnapshot.exists()) {
+      return { id, ...roomSnapshot.data() } as Room;
+    }
+    
+    return null;
+  } catch (error: any) {
+    console.error('Error getting room by ID:', error);
+    return null;
+  }
+};
+
 // Guest functions
 export const getGuests = async () => {
   try {
@@ -243,6 +259,22 @@ export const deleteGuest = async (id: string) => {
     return { error: null };
   } catch (error: any) {
     return { error: error.message };
+  }
+};
+
+export const getGuestById = async (id: string) => {
+  try {
+    const guestRef = doc(db, 'guests', id);
+    const guestSnapshot = await getDoc(guestRef);
+    
+    if (guestSnapshot.exists()) {
+      return { id, ...guestSnapshot.data() } as Guest;
+    }
+    
+    return null;
+  } catch (error: any) {
+    console.error('Error getting guest by ID:', error);
+    return null;
   }
 };
 

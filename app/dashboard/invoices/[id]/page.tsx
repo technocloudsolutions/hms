@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { getInvoiceById, getExchangeRate } from '@/lib/firebase';
+import { getInvoiceById, getExchangeRate, getGuestById, getRoomById } from '@/lib/firebase';
 import { Invoice, Guest, Room } from '@/lib/types';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { ArrowLeft, Download } from 'lucide-react';
@@ -14,14 +14,22 @@ import Head from 'next/head';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import Image from 'next/image';
+import InvoiceSignatures from '@/components/InvoiceSignatures';
+import InvoiceImplLive from '@/components/InvoiceImplLive';
+
+// Extend the Invoice type to include roomId property that might be present
+interface ExtendedInvoice extends Invoice {
+  roomId?: string;
+}
 
 export default function InvoiceDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
-  const [invoice, setInvoice] = useState<Invoice | null>(null);
+  const [invoice, setInvoice] = useState<ExtendedInvoice | null>(null);
   const [guest, setGuest] = useState<Guest | null>(null);
-  const [room, setRoom] = useState<Room | null>(null);
+  // Use Record<string, any> to avoid type issues with Room
+  const [room, setRoom] = useState<Record<string, any> | null>(null);
   const [loading, setLoading] = useState(true);
   const [convertedCurrency, setConvertedCurrency] = useState<'USD' | 'LKR' | null>(null);
   const [convertedRate, setConvertedRate] = useState<number>(1);
@@ -31,7 +39,7 @@ export default function InvoiceDetailPage() {
     const fetchInvoice = async () => {
       try {
         const id = params.id as string;
-        const invoiceData = await getInvoiceById(id);
+        const invoiceData = await getInvoiceById(id) as ExtendedInvoice | null;
         
         if (!invoiceData) {
           toast({
@@ -45,42 +53,106 @@ export default function InvoiceDetailPage() {
         
         setInvoice(invoiceData);
         
-        // In a real app, you would fetch the guest and room data here
-        // For now, we'll just set placeholders
-        setGuest({
-          id: invoiceData.guestId,
-          name: 'Guest Name',
-          email: 'guest@example.com',
-          phone: '+1234567890',
-          address: '123 Main St, City, Country',
-          idType: 'Passport',
-          idNumber: 'AB123456',
-          createdAt: invoiceData.createdAt,
-          updatedAt: invoiceData.updatedAt,
-        });
+        // Fetch real guest data
+        if (invoiceData.guestId) {
+          try {
+            const guestData = await getGuestById(invoiceData.guestId);
+            if (guestData) {
+              setGuest(guestData);
+            } else {
+              // Fallback if guest not found
+              setGuest({
+                id: invoiceData.guestId,
+                name: 'Guest',
+                email: 'guest@example.com',
+                phone: '+1234567890',
+                address: 'Address not available',
+                idType: 'Unknown',
+                idNumber: 'Unknown',
+                createdAt: invoiceData.createdAt,
+                updatedAt: invoiceData.updatedAt,
+              });
+            }
+          } catch (error) {
+            console.error('Error fetching guest:', error);
+            // Fallback if guest fetch fails
+            setGuest({
+              id: invoiceData.guestId,
+              name: 'Guest',
+              email: 'guest@example.com',
+              phone: '+1234567890',
+              address: 'Address not available',
+              idType: 'Unknown',
+              idNumber: 'Unknown',
+              createdAt: invoiceData.createdAt,
+              updatedAt: invoiceData.updatedAt,
+            });
+          }
+        }
         
-        setRoom({
-          id: 'room-id',
-          number: '101',
-          type: 'Deluxe',
-          price: 150,
-          status: 'Occupied',
-          amenities: ['WiFi', 'TV', 'AC'],
-          description: 'Deluxe room with ocean view',
-          images: [],
-          floor: 1,
-          capacity: 2,
-          size: 30,
-          view: 'Ocean',
-          bedType: 'King',
-          lastCleaned: invoiceData.createdAt,
-          lastMaintenance: invoiceData.createdAt,
-          rating: 4.5,
-          reviews: 10,
-          specialOffers: [],
-          accessibility: true,
-          smoking: false,
-        });
+        // Fetch real room data
+        const roomId = invoiceData.roomId || 'default-room-id';
+        try {
+          const roomData = await getRoomById(roomId);
+          if (roomData) {
+            setRoom(roomData);
+          } else {
+            // Create fallback room data
+            const extractedRoomNumber = 
+              invoiceData.items?.[0]?.description?.split(' - ')?.[0]?.replace('Room ', '') || '101';
+            
+            const extractedRoomType = 
+              (invoiceData.items?.[0]?.description?.split(' - ')?.[1] || 'Suite');
+            
+            setRoom({
+              id: 'room-id',
+              number: extractedRoomNumber,
+              type: extractedRoomType,
+              price: invoiceData.items?.[0]?.unitPrice || 150,
+              status: 'Occupied',
+              amenities: ['WiFi', 'TV', 'AC'],
+              description: 'Room details not available',
+              images: [],
+              floor: 1,
+              capacity: 2,
+              size: 30,
+              view: 'Ocean',
+              bedType: 'King',
+              lastCleaned: invoiceData.createdAt,
+              lastMaintenance: invoiceData.createdAt,
+              rating: 4.5,
+              reviews: 10,
+              specialOffers: [],
+              accessibility: true,
+              smoking: false,
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching room:', error);
+          // Fallback with room data
+          setRoom({
+            id: 'room-id',
+            number: invoiceData.items?.[0]?.description?.split(' - ')?.[0]?.replace('Room ', '') || '101',
+            type: 'Suite',
+            price: invoiceData.items?.[0]?.unitPrice || 150,
+            status: 'Occupied',
+            amenities: ['WiFi', 'TV', 'AC'],
+            description: 'Room details not available',
+            images: [],
+            floor: 1,
+            capacity: 2,
+            size: 30,
+            view: 'Ocean',
+            bedType: 'King',
+            lastCleaned: invoiceData.createdAt,
+            lastMaintenance: invoiceData.createdAt,
+            rating: 4.5,
+            reviews: 10,
+            specialOffers: [],
+            accessibility: true,
+            smoking: false,
+          });
+        }
         
       } catch (error) {
         console.error('Error fetching invoice:', error);
@@ -142,6 +214,7 @@ export default function InvoiceDetailPage() {
     }).format(date);
   };
 
+  // Update the PDF generation to better handle images, especially the logo
   const handleDownloadPDF = async () => {
     if (!invoice) return;
 
@@ -162,15 +235,32 @@ export default function InvoiceDetailPage() {
       const originalDisplay = element.style.display;
       element.style.display = 'block';
 
-      // Apply direct styles to ensure text is dark and visible
+      // Update address text handling to prevent cropping in PDF
       const applyDarkTextStyles = (element: HTMLElement) => {
         element.style.color = '#000000';
         element.style.fontFamily = 'Arial, sans-serif';
         element.style.textShadow = 'none';
         element.style.backgroundColor = '#ffffff';
         
+        // Fix text cropping in the header section
+        if (element.classList.contains('print-header')) {
+          const addressDiv = element.querySelector('.text-muted-foreground');
+          if (addressDiv) {
+            (addressDiv as HTMLElement).style.lineHeight = '1.4';
+            (addressDiv as HTMLElement).style.marginTop = '5px';
+            
+            // Make sure each paragraph in the address has sufficient height
+            const paragraphs = addressDiv.querySelectorAll('p');
+            paragraphs.forEach(p => {
+              (p as HTMLElement).style.marginBottom = '4px';
+              (p as HTMLElement).style.paddingBottom = '1px';
+            });
+          }
+        }
+        
         if (element.classList.contains('text-muted-foreground')) {
           element.style.color = '#333333';
+          element.style.lineHeight = '1.4';
         }
         
         if (element.tagName === 'TABLE') {
@@ -190,11 +280,21 @@ export default function InvoiceDetailPage() {
           element.style.color = '#000000';
         }
         
-        // Ensure images are visible
+        // Ensure images are visible and properly sized
         if (element.tagName === 'IMG') {
           element.style.maxWidth = '100%';
           element.style.height = 'auto';
           element.style.display = 'block';
+        }
+        
+        // Improve logo image rendering
+        if (element.classList.contains('print-logo')) {
+          const img = element.querySelector('img');
+          if (img) {
+            img.style.width = '110px';
+            img.style.height = '110px';
+            img.style.objectFit = 'contain';
+          }
         }
         
         Array.from(element.children).forEach(child => {
@@ -204,12 +304,15 @@ export default function InvoiceDetailPage() {
       
       // Create a clone of the element to avoid modifying the original
       const clone = element.cloneNode(true) as HTMLElement;
-      clone.style.width = '800px'; // Fixed width for better rendering
-      clone.style.padding = '40px';
+      
+      // Set the exact width for A4 paper size
+      clone.style.width = '210mm'; // A4 width
+      clone.style.padding = '10mm'; // Standard margin
       clone.style.backgroundColor = '#ffffff';
+      clone.style.boxSizing = 'border-box';
       clone.style.borderRadius = '0'; // Remove any border radius for PDF
       clone.style.boxShadow = 'none'; // Remove any box shadows
-      clone.style.border = '2px solid #e5e7eb'; // Add a decorative border
+      clone.style.border = 'none'; // Remove border for PDF
       
       // Apply styles to ensure text is visible
       applyDarkTextStyles(clone);
@@ -235,13 +338,15 @@ export default function InvoiceDetailPage() {
 
       // Use html2canvas with improved settings for better text quality
       const canvas = await html2canvas(clone, {
-        scale: 4, // Higher scale for better text quality (increased from 3)
+        scale: 2.5, // Higher scale for better image quality
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
         allowTaint: true,
         imageTimeout: 15000, // Longer timeout for image loading
-        removeContainer: false
+        removeContainer: false,
+        width: 210 * 3.78, // A4 width in pixels (210mm * 3.78 pixels/mm at 96 DPI)
+        height: 297 * 3.78 // A4 height in pixels
       });
       
       // Remove the clone from the document
@@ -262,7 +367,7 @@ export default function InvoiceDetailPage() {
 
       // Calculate dimensions to fit the image properly on the page
       const imgWidth = 210; // A4 width in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const imgHeight = 297; // A4 height in mm
 
       // Add the invoice image
       pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
@@ -332,20 +437,21 @@ export default function InvoiceDetailPage() {
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back
               </Button>
-              <h1 className="text-3xl font-bold">Invoice #{invoice.invoiceNumber}</h1>
+              <h1 className="text-3xl font-bold">Invoice #{invoice?.invoiceNumber || invoice?.id}</h1>
               <Badge className={
-                invoice.status === 'Paid' ? 'bg-green-500/10 text-green-500' :
-                invoice.status === 'Overdue' ? 'bg-red-500/10 text-red-500' :
-                invoice.status === 'Issued' ? 'bg-blue-500/10 text-blue-500' :
-                invoice.status === 'Draft' ? 'bg-gray-500/10 text-gray-500' :
+                invoice?.status === 'Paid' ? 'bg-green-500/10 text-green-500' :
+                invoice?.status === 'Overdue' ? 'bg-red-500/10 text-red-500' :
+                invoice?.status === 'Issued' ? 'bg-blue-500/10 text-blue-500' :
+                invoice?.status === 'Draft' ? 'bg-gray-500/10 text-gray-500' :
                 'bg-yellow-500/10 text-yellow-500'
               }>
-                {invoice.status}
+                {invoice?.status}
               </Badge>
             </div>
+            
             <div className="flex gap-2">
               <Button variant="outline" onClick={handleCurrencyConversion}>
-                Show in {invoice.currency === 'USD' ? 'LKR' : 'USD'}
+                Show in {invoice?.currency === 'USD' ? 'LKR' : 'USD'}
               </Button>
               <Button onClick={handleDownloadPDF}>
                 <Download className="mr-2 h-4 w-4" />
@@ -354,186 +460,15 @@ export default function InvoiceDetailPage() {
             </div>
           </div>
 
-          {/* Printable Invoice */}
-          <div id="print-invoice" className="print-container bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 mb-8 text-black dark:text-white border border-gray-200">
-            {/* Invoice Header */}
-            <div className="print-header flex justify-between items-start mb-8 pb-6 border-b border-gray-200">
-              <div>
-                <div className="print-logo mb-3">
-                  <Image 
-                    src="/logo.png" 
-                    alt="Rajini by The Waters" 
-                    width={180} 
-                    height={60}
-                    className="mb-2"
-                    priority
-                    unoptimized
-                  />
-                </div>
-                <div className="text-sm text-muted-foreground dark:text-gray-300">
-                  <p>437 Beralihela, Colony 5</p>
-                  <p>82600 Tissamaharama <br />
-                  Sri Lanka</p>
-                  <p>+94 76 281 0000</p>
-                  <p>info@rajinihotels.com</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="print-invoice-title text-3xl font-bold mb-1 text-primary">INVOICE</div>
-                <div className="print-invoice-number text-muted-foreground dark:text-gray-300">#{invoice.invoiceNumber}</div>
-                <div className="mt-4">
-                  <Badge className={
-                    invoice.status === 'Paid' ? 'bg-green-500/10 text-green-500' :
-                    invoice.status === 'Overdue' ? 'bg-red-500/10 text-red-500' :
-                    invoice.status === 'Issued' ? 'bg-blue-500/10 text-blue-500' :
-                    invoice.status === 'Draft' ? 'bg-gray-500/10 text-gray-500' :
-                    'bg-yellow-500/10 text-yellow-500'
-                  } style={{ fontWeight: 'bold' }}>
-                    {invoice.status}
-                  </Badge>
-                </div>
-              </div>
-            </div>
-
-            {/* Invoice Details */}
-            <div className="print-details grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 bg-gray-50 dark:bg-gray-700/20 p-4 rounded-md">
-              <div className="print-section">
-                <div className="print-section-title font-semibold text-primary border-b pb-1 mb-2">Bill To</div>
-                {guest && (
-                  <div className="mt-2 space-y-1">
-                    <div className="font-medium">{guest.name}</div>
-                    <div>{guest.email}</div>
-                    <div>{guest.phone}</div>
-                    <div className="text-sm text-muted-foreground dark:text-gray-300">{guest.address}</div>
-                  </div>
-                )}
-              </div>
-
-              <div className="print-section">
-                <div className="print-section-title font-semibold text-primary border-b pb-1 mb-2">Invoice Details</div>
-                <div className="mt-2 space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground dark:text-gray-300">Issue Date:</span>
-                    <span className="font-medium">{formatDate(invoice.issueDate)}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground dark:text-gray-300">Due Date:</span>
-                    <span className="font-medium">{formatDate(invoice.dueDate)}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground dark:text-gray-300">Currency:</span>
-                    <span className="font-medium">{invoice.currency}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="print-section">
-                <div className="print-section-title font-semibold text-primary border-b pb-1 mb-2">Payment Information</div>
-                <div className="mt-2 space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground dark:text-gray-300">Payment Status:</span>
-                    <span className="font-medium">{invoice.status === 'Paid' ? 'Paid' : 'Pending'}</span>
-                  </div>
-                  {invoice.status === 'Paid' && invoice.paymentMethod && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground dark:text-gray-300">Payment Method:</span>
-                      <span className="font-medium">{invoice.paymentMethod}</span>
-                    </div>
-                  )}
-                  {invoice.status === 'Paid' && invoice.paymentDate && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground dark:text-gray-300">Payment Date:</span>
-                      <span className="font-medium">{formatDate(invoice.paymentDate)}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Invoice Items */}
-            <div className="print-section mb-8">
-              <div className="print-section-title font-semibold text-primary border-b pb-1 mb-4">Invoice Items</div>
-              <table className="print-table w-full dark:border-gray-700 border rounded-md overflow-hidden">
-                <thead>
-                  <tr>
-                    <th className="text-left py-3 px-4 bg-gray-50 dark:bg-gray-700">Description</th>
-                    <th className="text-left py-3 px-4 bg-gray-50 dark:bg-gray-700">Type</th>
-                    <th className="text-right py-3 px-4 bg-gray-50 dark:bg-gray-700">Quantity</th>
-                    <th className="text-right py-3 px-4 bg-gray-50 dark:bg-gray-700">Unit Price</th>
-                    <th className="text-right py-3 px-4 bg-gray-50 dark:bg-gray-700">Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {invoice.items.map((item, index) => (
-                    <tr key={index} className={`${index % 2 === 1 ? 'bg-gray-50' : ''} dark:border-gray-700`}>
-                      <td className="py-3 px-4 dark:border-gray-700">{item.description}</td>
-                      <td className="py-3 px-4 dark:border-gray-700">{item.type}</td>
-                      <td className="text-right py-3 px-4 dark:border-gray-700">{item.quantity}</td>
-                      <td className="text-right py-3 px-4 dark:border-gray-700">{formatCurrency(item.unitPrice, invoice.currency)}</td>
-                      <td className="text-right py-3 px-4 dark:border-gray-700 font-medium">{formatCurrency(item.amount, invoice.currency)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Totals */}
-            <div className="print-totals ml-auto w-full md:w-1/2 lg:w-2/5 border border-gray-200 rounded-md bg-gray-50 dark:bg-gray-800/20 p-4">
-              <div className="print-total-row border-b pb-2">
-                <span className="text-muted-foreground dark:text-gray-300">Subtotal:</span>
-                <span className="font-medium">{formatCurrency(invoice.subtotal, invoice.currency)}</span>
-              </div>
-              <div className="print-total-row border-b pb-2 pt-2">
-                <span className="text-muted-foreground dark:text-gray-300">Tax ({invoice.taxRate}%):</span>
-                <span className="font-medium">{formatCurrency(invoice.taxAmount, invoice.currency)}</span>
-              </div>
-              {invoice.discountAmount > 0 && (
-                <div className="print-total-row border-b pb-2 pt-2">
-                  <span className="text-muted-foreground dark:text-gray-300">Discount:</span>
-                  <span className="text-green-600 dark:text-green-400 font-medium">-{formatCurrency(invoice.discountAmount, invoice.currency)}</span>
-                </div>
-              )}
-              <div className="print-total-row print-grand-total border-t border-b-2 border-gray-300 py-3 my-2">
-                <span className="font-bold text-gray-900 dark:text-white">Total:</span>
-                <span className="font-bold text-gray-900 dark:text-white">{formatCurrency(invoice.totalAmount, invoice.currency)}</span>
-              </div>
-              
-              {(invoice.advancePayment || 0) > 0 && (
-                <div className="print-total-row print-advance-payment pt-2 pb-2">
-                  <span className="text-muted-foreground dark:text-gray-300">Advance Payment:</span>
-                  <span className="text-green-600 dark:text-green-400 font-medium">-{formatCurrency(invoice.advancePayment || 0, invoice.currency)}</span>
-                </div>
-              )}
-              
-              {(invoice.advancePayment || 0) > 0 && (
-                <div className="print-total-row print-remaining-balance border-t border-gray-300 pt-2">
-                  <span className="font-bold text-gray-900 dark:text-white">Remaining Balance:</span>
-                  <span className="font-bold text-gray-900 dark:text-white">{formatCurrency(invoice.remainingBalance || 0, invoice.currency)}</span>
-                </div>
-              )}
-              
-              {convertedCurrency && (
-                <div className="print-total-row text-sm text-muted-foreground dark:text-gray-300 border-t border-dashed border-gray-200 mt-3 pt-3">
-                  <span>Equivalent in {convertedCurrency}:</span>
-                  <span>{formatCurrency(convertedTotal, convertedCurrency)}</span>
-                </div>
-              )}
-            </div>
-
-            {/* Notes */}
-            {invoice.notes && (
-              <div className="print-notes bg-muted/50 dark:bg-gray-700/50 p-4 rounded-md mt-8">
-                <div className="print-notes-title font-medium">Notes</div>
-                <p className="text-muted-foreground dark:text-gray-300">{invoice.notes}</p>
-              </div>
+          {/* New Invoice Component */}
+          <div id="print-invoice" className="print-container">
+            {invoice && guest && room && (
+              <InvoiceImplLive 
+                invoice={invoice} 
+                guest={guest} 
+                room={room} 
+              />
             )}
-
-            {/* Footer */}
-            <div className="print-footer mt-12 pt-6 border-t text-center text-sm text-muted-foreground dark:text-gray-300 relative">
-              <div className="absolute top-[-2px] left-0 h-[3px] w-1/2 bg-gradient-to-r from-primary to-transparent"></div>
-              <p>Thank you for your business!</p>
-              <p className="mt-1">For any inquiries regarding this invoice, please contact our finance department at finance@rajinihotels.com</p>
-            </div>
           </div>
         </div>
       </DashboardLayout>
