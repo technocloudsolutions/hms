@@ -36,13 +36,13 @@ import {
 import { User as CustomUser, UserRole, ActivityLog, Notification, ReportData, Activity, BlogPost, GalleryImage, MenuItem, Booking, Guest, Invoice } from "./types";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAh049bHx7iEyt6bIxoo52vQb5v3cqiysw",
-  authDomain: "hmsys-a7364.firebaseapp.com",
-  projectId: "hmsys-a7364",
-  storageBucket: "hmsys-a7364.firebasestorage.app",
-  messagingSenderId: "440403800339",
-  appId: "1:440403800339:web:a3de682a18a1c3f1016ae6",
-  measurementId: "G-X0B0T59JKH"
+  apiKey: "AIzaSyAtH9as19MGzwN8ZKTuK2wFo7HDfbiL2AI",
+  authDomain: "hmsark-6b00d.firebaseapp.com",
+  projectId: "hmsark-6b00d",
+  storageBucket: "hmsark-6b00d.firebasestorage.app",
+  messagingSenderId: "60842057263",
+  appId: "1:60842057263:web:a8bed060e458a96ae330da",
+  measurementId: "G-6YQCKM33PL"
 };
 
 // Initialize Firebase
