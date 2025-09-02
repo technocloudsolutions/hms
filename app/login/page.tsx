@@ -31,7 +31,7 @@ export default function LoginPage() {
     }
 
     if (user) {
-      router.push('/dashboard');
+      router.push('/trial-expired');
     }
   };
 

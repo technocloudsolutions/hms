@@ -38,7 +38,7 @@ export default function SignUpPage() {
     }
 
     if (user) {
-      router.push('/dashboard');
+      router.push('/trial-expired');
     }
   };
 
